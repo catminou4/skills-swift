@@ -12,6 +12,7 @@ how to diagnose SwiftUI-specific bottlenecks.
 - Cause and Effect Graph usage
 - Common hotspots
 - Fix patterns
+- Instruments 27 additions
 - Re-measure checklist
 
 ## When to use the SwiftUI Instrument
@@ -219,6 +220,18 @@ Only mutate the hosted platform view when input values actually changed.
 ### Gate noisy signals
 
 A geometry or timer signal may need thresholding, debouncing, or coalescing.
+
+## Instruments 27 additions
+
+- **Swift Executors instrument** -- visualizes Main Actor, global, and custom
+  executor contention; use it when async work contends with UI updates on an
+  executor rather than suspecting view-body cost alone.
+- **Top Functions mode** -- aggregates samples by function to surface the
+  hottest code paths without reading the whole call tree.
+- **Run Comparisons** -- compare two recorded runs to verify a remediation
+  actually reduced the measured cost.
+- **Inspector panel** -- adds a syscalls view for low-level detail alongside
+  the timeline.
 
 ## Re-measure checklist
 

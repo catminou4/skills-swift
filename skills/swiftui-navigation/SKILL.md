@@ -1,6 +1,6 @@
 ---
 name: swiftui-navigation
-description: "Implement SwiftUI navigation patterns including NavigationStack, NavigationSplitView, sheet presentation, tab-based navigation, and deep linking. Use when building push navigation, programmatic routing, multi-column layouts, modal sheets, tab bars, universal links, or custom URL scheme handling."
+description: "Implement SwiftUI navigation patterns including NavigationStack, NavigationSplitView, sheet presentation, tab-based navigation, and deep linking. Use when building push navigation, programmatic routing, multi-column layouts, modal sheets, item-bound alerts and confirmation dialogs, tab bars, universal links, or custom URL scheme handling."
 ---
 
 # SwiftUI Navigation
@@ -59,6 +59,8 @@ path = []                        // Pop to root
 ```
 
 **Router pattern:** For apps with complex navigation, use a router object that owns the path and sheet state. Each tab gets its own router instance injected via `.environment()`. Centralize destination mapping with a single `.navigationDestination(for:)` block or a shared `withAppRouter()` modifier.
+
+**iOS 27:** `.toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)` minimizes the navigation bar as the user scrolls down.
 
 See [references/navigationstack.md](references/navigationstack.md) for full router examples including per-tab stacks, centralized destination mapping, and generic tab routing.
 
@@ -159,6 +161,13 @@ Fine-tuning: `.fitted(horizontal:vertical:)` constrains fitting axes; `.sticky(h
 Route every programmatic close through the same save/validate/discard gate;
 `interactiveDismissDisabled` guards interactive dismissal only.
 
+**Item-bound alerts and dialogs (iOS 27):** `alert(_:item:actions:message:)`,
+`alert(error:actions:message:)`, and
+`confirmationDialog(_:item:titleVisibility:actions:message:)` present while the
+bound optional (or error) is non-nil and reset it to nil on dismissal -- the same
+item-binding semantics as `.sheet(item:)`. Sheet content can also animate in with
+`.navigationTransition(.crossFade)` (iOS 27+; unavailable on macOS).
+
 **Enum-driven sheet routing:** Define a `SheetDestination` enum that is `Identifiable`, store it on the router, and map it with a shared view modifier. This lets any child view present sheets without prop-drilling. See [references/sheets.md](references/sheets.md) for the full centralized sheet routing pattern.
 
 ## Tab-Based Navigation
@@ -195,6 +204,8 @@ struct MainTabView: View {
 - **`.tabViewSidebarHeader/Footer`** -- customize sidebar sections on iPadOS/macOS
 - **`.tabViewBottomAccessory { }`** -- attach content below the tab bar (e.g., Now Playing bar)
 - **`TabSection`** -- group tabs into sidebar sections with `.tabPlacement(.sidebarOnly)`
+
+**iOS 27:** `Tab(role: .prominent)` renders a prominent trailing-position tab.
 
 See [references/tabview.md](references/tabview.md) for full TabView patterns including custom bindings, dynamic tabs, and sidebar customization.
 
@@ -250,6 +261,7 @@ See [references/deeplinks.md](references/deeplinks.md) for full examples of AASA
 8. Handling deep links in multiple places -- centralize URL parsing in the router
 9. Hard-coding sheet frame dimensions -- use `.presentationSizing(.form)` instead
 10. Missing `@MainActor` on router classes -- required for Swift 6 concurrency safety
+11. Driving an alert for a selected model with a separate `isPresented` flag -- use the item-bound `alert`/`confirmationDialog` overloads on iOS 27+
 
 ## Review Checklist
 

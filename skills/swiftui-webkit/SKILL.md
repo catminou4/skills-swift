@@ -173,6 +173,11 @@ final class ArticleNavigationDecider: WebPage.NavigationDeciding {
 }
 ```
 
+**iOS 27:** `WebPage.NavigationDeciding` gains `willSubmit(formInfo:)` --
+`WebPage.FormInfo` carries `formValues`, `httpMethod`, `sourceFrame`,
+`submissionURL`, and `targetFrame`, the SwiftUI-side counterpart of the legacy
+`WKNavigationDelegate` form-submission callback.
+
 Keep app-level deep-link routing in the navigation skill. This skill owns navigation that happens inside embedded web content.
 
 See [references/navigation-and-javascript.md](references/navigation-and-javascript.md) for complete patterns.
@@ -243,6 +248,7 @@ Useful modifiers and related APIs:
 - `findNavigator(isPresented:)`
 - `webViewScrollPosition(_:)`
 - `webViewOnScrollGeometryChange(...)`
+- visionOS 27: `allowsImmersiveEnvironments`, `WebViewImmersiveEnvironmentView`, and `WebPage.ImmersiveEnvironment` for immersive web content
 
 Apply them only when the user experience needs them.
 

@@ -1,6 +1,6 @@
 ---
 name: swiftui-layout-components
-description: "Build SwiftUI layouts using stacks, grids, lists, scroll views, forms, and controls. Covers VStack/HStack/ZStack, LazyVGrid/LazyHGrid, List with sections and swipe actions, ScrollView with ScrollPosition and scroll-driven reveal surfaces, Form with validation, Toggle/Picker/Slider, .searchable, and overlay patterns. Use when building data-driven layouts, collection views, paged detail reveals, settings screens, search interfaces, or transient overlay UI."
+description: "Build SwiftUI layouts using stacks, grids, lists, scroll views, forms, and controls. Covers VStack/HStack/ZStack, LazyVGrid/LazyHGrid, List with sections and swipe actions, ScrollView with ScrollPosition and scroll-driven reveal surfaces, iOS 27 reorderable containers and swipe actions beyond List, Form with validation, Toggle/Picker/Slider, .searchable, and overlay patterns. Use when building data-driven layouts, collection views, paged detail reveals, settings screens, search interfaces, or transient overlay UI."
 ---
 
 # SwiftUI Layout & Components
@@ -112,6 +112,10 @@ List {
 
 **iOS 26:** Apply `.scrollEdgeEffectStyle(.soft, for: .top)` for modern scroll edge effects.
 
+**iOS 27:**
+- Drag-to-reorder is no longer `List`-only: mark the `ForEach` with `.reorderable()` and scope the container with `.reorderContainer(for:isEnabled:move:)`; the `move` closure receives a `ReorderDifference` to apply to the collection. Reordering reaches watchOS for the first time; `.onMove` remains valid for edit-mode list workflows.
+- `.swipeActions` escapes `List`: add `.swipeActionsContainer()` to a `ScrollView` and put `.swipeActions` on the rows.
+
 See [references/list.md](references/list.md) for full list patterns including feed lists with scroll-to-top.
 
 ## ScrollView
@@ -154,9 +158,13 @@ ScrollView {
 - `.backgroundExtensionEffect()` -- mirror/blur at safe area edges (use sparingly, one per screen)
 - `.safeAreaBar(edge:)` -- attach bar views that integrate with scroll effects
 
+**iOS 27 additions:**
+- `.swipeActionsContainer()` -- enables `.swipeActions` on views in `ScrollView` + lazy stacks/grids; `swipeActions(edge:allowsFullSwipe:content:onPresentationChanged:)` reports reveal/dismiss
+- `.reorderable()` + `.reorderContainer(for:in:isEnabled:move:)` -- drag-to-reorder within sections or across multiple collections
+
 See [references/scrollview.md](references/scrollview.md) for full
-`ScrollPosition`, paged reveal, zoom/crop conflict, and iOS 26 edge-effect
-patterns.
+`ScrollPosition`, paged reveal, zoom/crop conflict, iOS 26 edge-effect, and
+iOS 27 reorder/swipe-container patterns.
 
 ## Form and Controls
 
@@ -291,6 +299,7 @@ For modal routing, sheet detents, and full-screen presentation policy, hand off 
 6. Omit stack/grid `spacing:` for platform-adaptive defaults unless a specific gap is intentional.
 7. Drive a scroll reveal from one normalized progress value, not parallel booleans or a duplicate drag gesture.
 8. Keep per-frame scroll geometry local and avoid changing the geometry used to calculate progress.
+9. Do not hand-roll drag-to-reorder gestures for stacks or grids on iOS 27+; use `.reorderable()` + `.reorderContainer`.
 
 ## Review Checklist
 
@@ -307,6 +316,8 @@ For modal routing, sheet detents, and full-screen presentation policy, hand off 
 - [ ] Stack/grid `spacing:` omitted unless a specific value is required
 - [ ] Scroll-driven reveals use one normalized progress value and keep geometry updates in a narrow subtree
 - [ ] Conflicting zoom/crop interactions disable scrolling, and discrete visibility effects do not drive continuous animation
+- [ ] Drag-to-reorder on iOS 27+ uses `.reorderable()`/`reorderable(collectionID:)` on `ForEach` plus `reorderContainer` on the enclosing container
+- [ ] `.swipeActions` outside `List` sit inside a `.swipeActionsContainer()`
 
 ## References
 

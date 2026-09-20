@@ -1,6 +1,6 @@
 ---
 name: swiftui-gestures
-description: "Implement, review, or improve SwiftUI gesture handling. Use when adding tap, long press, drag, magnify, or rotate gestures, composing gestures with simultaneously/sequenced/exclusively, managing transient state with @GestureState, resolving parent/child gesture conflicts with highPriorityGesture or simultaneousGesture, building custom Gesture protocol conformances, or migrating from deprecated MagnificationGesture to MagnifyGesture or using the newer RotateGesture."
+description: "Implement, review, or improve SwiftUI gesture handling. Use when adding tap, long press, drag, magnify, or rotate gestures, composing gestures with simultaneously/sequenced/exclusively, managing transient state with @GestureState, resolving parent/child gesture conflicts with highPriorityGesture or simultaneousGesture, restricting gesture input sources with inputKinds (iOS 27+), building custom Gesture protocol conformances, or migrating from deprecated MagnificationGesture to MagnifyGesture or using the newer RotateGesture."
 ---
 
 # SwiftUI Gestures (iOS 26+)
@@ -47,6 +47,13 @@ the relevant Sosumi or official Apple documentation URL in the response.
 
 **Discrete** gestures fire once (`.onEnded`). **Continuous** gestures stream
 updates (`.onChanged`, `.onEnded`, `.updating`).
+
+**iOS 27:** every built-in gesture accepts an `inputKinds:` parameter
+(`GestureInputKinds` option set: `.all`, `.directTouch`, `.indirectTouch`,
+`.pencil`, `.pointer`) to restrict which input devices can trigger recognition --
+e.g. `DragGesture(inputKinds: .pencil)` for a stylus-only canvas. The shorthand
+`onTapGesture(count:coordinateSpace:inputKinds:perform:)` exposes the same
+control.
 
 ## TapGesture
 
@@ -408,6 +415,7 @@ has appropriate accessibility traits.
 - [ ] Gesture-driven animations use `.spring` or similar for natural deceleration
 - [ ] `GestureMask` considered when mixing gestures across view hierarchy levels
 - [ ] `onTapGesture` only used where `count > 1`, tap location, or coordinate space matters — plain single-tap actions use `Button` instead
+- [ ] `inputKinds:` set where a gesture must ignore specific input devices (iOS 27+)
 
 ## References
 
@@ -420,5 +428,6 @@ has appropriate accessibility traits.
 - [MagnifyGesture](https://sosumi.ai/documentation/swiftui/magnifygesture)
 - [RotateGesture](https://sosumi.ai/documentation/swiftui/rotategesture)
 - [GestureState](https://sosumi.ai/documentation/swiftui/gesturestate)
+- [GestureInputKinds](https://sosumi.ai/documentation/swiftui/gestureinputkinds)
 - [Composing SwiftUI gestures](https://sosumi.ai/documentation/swiftui/composing-swiftui-gestures)
 - [Adding interactivity with gestures](https://sosumi.ai/documentation/swiftui/adding-interactivity-with-gestures)

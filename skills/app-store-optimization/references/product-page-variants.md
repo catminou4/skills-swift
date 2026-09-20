@@ -19,6 +19,12 @@ Custom Product Pages, product page optimization (A/B testing), and in-app event 
 4. Submit the page for review -- Custom Product Pages go through App Review like regular submissions.
 5. Once approved, the page is visible through its unique URL and, if configured, through assigned App Store search keywords.
 
+As of WWDC26, App Store Connect's Asset Library is the centralized place for
+visual assets: upload images, videos, app previews, and screenshots once, reuse
+them across custom product pages and In-App Events, and submit them for
+approval independently of an app version -- useful for seasonal imagery or
+campaigns coordinated with an Apple Ads flight.
+
 ### URL structure
 
 Custom Product Pages use the format:

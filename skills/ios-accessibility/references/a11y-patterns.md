@@ -9,6 +9,7 @@
 - Custom Rotors
 - System Accessibility Preferences
 - UIKit Accessibility Patterns
+- Continuous Reading (iOS 27)
 - AppKit Accessibility Patterns
 - Voice Control Patterns
 - Switch Control Patterns
@@ -152,6 +153,42 @@ customButton.accessibilityTraits.remove(.staticText)
 UIAccessibility.post(notification: .announcement, argument: "Upload complete")
 UIAccessibility.post(notification: .layoutChanged, argument: targetView)
 UIAccessibility.post(notification: .screenChanged, argument: newScreenView)
+```
+
+## Continuous Reading (iOS 27)
+
+Reading apps need continuous VoiceOver reading across text elements and page turns.
+Link paragraphs so VoiceOver continues into the next element, mark the last
+element per page with `.causesPageTurn`, and post `.pageScrolled` after handling
+`accessibilityScroll(_:)` (WWDC26 session 219):
+
+```swift
+// UIKit: link text elements for line/paragraph navigation
+for (index, paragraph) in paragraphs.enumerated() {
+    if index + 1 < paragraphs.count {
+        paragraph.accessibilityNextTextNavigationElement = paragraphs[index + 1]
+    }
+    if index - 1 >= 0 {
+        paragraph.accessibilityPreviousTextNavigationElement = paragraphs[index - 1]
+    }
+}
+
+// Turn pages automatically after reading the last element
+lastParagraphView.accessibilityTraits.insert(.causesPageTurn)
+
+override func accessibilityScroll(_ direction: UIAccessibilityScrollDirection) -> Bool {
+    moveToPage(direction)
+    UIAccessibility.post(notification: .pageScrolled,
+                         argument: "Page \(currentPage) of \(pages.count)")
+    return true
+}
+```
+
+```swift
+// SwiftUI: group text elements on one page with a namespace-linked group
+Text(paragraphs[0])
+    .textSelection(.enabled)
+    .accessibilityLinkedGroup(id: pageNumber, in: pageNamespace)
 ```
 
 ## AppKit Accessibility Patterns
@@ -392,3 +429,10 @@ func testSwipeToDeleteAlternative() throws {
 
 The audit and behavioral assertion complement, but do not replace, manual
 VoiceOver and Switch Control testing of the custom action.
+
+### Driving VoiceOver from UI tests (Xcode 27)
+
+Xcode 27's XCTest includes `XCUIVoiceOverService`, which drives VoiceOver in
+UI tests to validate focus, spoken output, and navigation across supported
+platforms — use it to assert what VoiceOver announces, not just element
+existence. It still does not replace manual VoiceOver testing.

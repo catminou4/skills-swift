@@ -282,7 +282,7 @@ Key guidelines:
 
 ## UIKit Accessibility Patterns
 
-For custom UIKit views, expose meaningful elements, labels, values, traits, and actions; mutate traits with `insert`/`remove`; make custom overlays modal; and use the appropriate announcement, layout-changed, or screen-changed notification. Load [references/a11y-patterns.md](references/a11y-patterns.md) for complete UIKit examples.
+For custom UIKit views, expose meaningful elements, labels, values, traits, and actions; mutate traits with `insert`/`remove`; make custom overlays modal; and use the appropriate announcement, layout-changed, or screen-changed notification. For reading-style apps on iOS 27+, link text elements across lines and pages with `accessibilityNextTextNavigationElement`/`accessibilityPreviousTextNavigationElement`, mark the last element of each page `.causesPageTurn`, and post `.pageScrolled` after scrolling so continuous reading continues across elements (WWDC26 session 219). Load [references/a11y-patterns.md](references/a11y-patterns.md) for complete UIKit examples.
 
 ## AppKit Accessibility Patterns
 
@@ -308,10 +308,11 @@ Before recommending a claim, require evidence that users can complete all common
 - **Full Keyboard Access testing**: Enable in Settings > Accessibility > Keyboards > Full Keyboard Access. Tab through every screen and verify all interactive elements receive focus.
 - **Switch Control testing**: Enable in Settings > Accessibility > Switch Control. Verify scan order is logical and custom actions appear for gesture-based interactions.
 - **Dynamic Type**: Test with all text sizes in Settings > Accessibility > Display & Text Size > Larger Text.
+- **Preview variants (Xcode 27+)**: The canvas overrides picker's Color Scheme Contrast and Control Borders groups render previews with increased contrast or control borders shown, without changing device settings.
 
 ### Automated Testing with XCTest
 
-Use stable accessibility identifiers to locate `XCUIElement` values, then assert existence, enabled/selected state, meaningful labels/values, and `hasFocus` where the test environment exposes focus. Cover dismissal focus restoration, every modal exit path, and gesture alternatives. UI automation complements—not replaces—VoiceOver, Voice Control, Switch Control, keyboard, Dynamic Type, contrast, Reduce Motion, and Reduce Transparency testing. Load [references/a11y-patterns.md](references/a11y-patterns.md) for XCTest examples.
+Use stable accessibility identifiers to locate `XCUIElement` values, then assert existence, enabled/selected state, meaningful labels/values, and `hasFocus` where the test environment exposes focus. Xcode 27 adds `XCUIVoiceOverService`, which drives VoiceOver directly from UI tests to verify focus, spoken output, and navigation. Cover dismissal focus restoration, every modal exit path, and gesture alternatives. UI automation complements—not replaces—VoiceOver, Voice Control, Switch Control, keyboard, Dynamic Type, contrast, Reduce Motion, and Reduce Transparency testing. Load [references/a11y-patterns.md](references/a11y-patterns.md) for XCTest examples.
 
 ## Common Mistakes
 

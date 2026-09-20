@@ -47,6 +47,7 @@ Escalate these as blockers before ordinary cleanup:
 | 2.1 completeness | No placeholders, broken/empty flows, inaccessible hardware-only features, or login gates without working demo credentials and review notes. |
 | 2.3 metadata | App name, category, description, keywords, and screenshots accurately represent the submitted binary and actual UI. |
 | 4.2 minimum functionality | The app provides meaningful app-specific value beyond a thin website or trivial duplication of system behavior. |
+| 4.3 spam | The app is meaningfully differentiated in saturated categories. The June 2026 revision rejects new submissions of well-established types (dating, flashlight, sound effects, wallpaper, simple timers, fortune telling) without a meaningfully different or improved experience, and unmaintained apps that do not attract customers can be removed. |
 | 2.5.1 software requirements | Archive uses public APIs and does not download code that changes reviewed functionality outside documented exceptions. |
 
 Verify these against the current guidelines and the exact archive; do not carry version or screenshot requirements forward from an older release checklist.
@@ -143,6 +144,12 @@ examples in [Entitlements and Usage Descriptions](references/review-checklists.m
 3. **TestFlight internal testing.** The build is available to internal testers (your team) within minutes of processing. Walk through every screen and flow on at least two device sizes.
 4. **TestFlight external testing.** External groups require Beta App Review before first external distribution. Use this to validate with real users before full submission.
 5. **Submit for App Review.** In App Store Connect, select the build, fill in all metadata fields, attach screenshots, and click Submit for Review. Review timing varies; allow buffer for rejections, appeals, and metadata fixes.
+
+WWDC26 submission changes: multiple In-App Purchases can be grouped into a
+single submission, or combined with review items such as In-App Events,
+custom product pages, and product page optimization tests, with status and
+App Review messages in a centralized view. Visual assets uploaded to the new
+Asset Library can be submitted and approved independently of an app version.
 
 ### Expedited Review Requests
 

@@ -23,6 +23,8 @@ record the checked date beside each blocker.
 | iPhone screenshots | As of May 2026, 6.9-inch screenshots are the primary accepted set; provide 6.5-inch only when the 6.9-inch set is absent or intentionally optimized as a fallback. |
 | iPad screenshots | Provide 13-inch screenshots when the app runs on iPad. |
 | Metadata limits | App name: 30 characters; subtitle: 30 characters; keyword field: up to 100 UTF-8 bytes, with comma-separated terms longer than two characters and no spaces after commas. |
+| Age rating | Since January 31, 2026, apps must answer Apple's updated age-rating questions in App Information; existing ratings were automatically mapped to the new age rating system on iOS 26+. |
+| Review guidelines | The June 8, 2026 revision rewrote 4.3 (Spam) with removal criteria for saturated categories, clarified 1.2 content responsibility, and added 4.5.3 prohibiting Live Activities used to spam, phish, or send unsolicited messages. |
 
 Sources: [Upcoming requirements](https://developer.apple.com/news/upcoming-requirements/)
 and [Screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/).
@@ -160,6 +162,7 @@ ranking, conversion optimization, screenshot ordering, and A/B testing to
 - [ ] Widgets show real content (not placeholders)
 - [ ] Timelines update meaningfully
 - [ ] Live Activities show time-sensitive info
+- [ ] Live Activities are not used to spam, phish, or send unsolicited messages (guideline 4.5.3, June 2026)
 - [ ] Lock Screen widgets are legible at small sizes
 
 ## Pre-Submission Checklist

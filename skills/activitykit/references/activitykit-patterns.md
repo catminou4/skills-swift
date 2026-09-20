@@ -12,6 +12,7 @@ Swift async/await and `ActivityContent`, so they target iOS 16.2+ unless noted.
 - [Push-to-Update Server Payload Format](#push-to-update-server-payload-format)
 - [Ending with Different Dismissal Policies](#ending-with-different-dismissal-policies)
 - [Complete Dynamic Island Layout (All Regions)](#complete-dynamic-island-layout-all-regions)
+- [Landscape Compact Width (iOS 27+)](#landscape-compact-width-ios-27)
 - [Lock Screen Layout with Timer and Progress](#lock-screen-layout-with-timer-and-progress)
 - [Multiple Concurrent Activities](#multiple-concurrent-activities)
 - [Observing Activity State Changes](#observing-activity-state-changes)
@@ -501,6 +502,34 @@ struct RideActivityWidget: Widget {
     }
 }
 ```
+
+## Landscape Compact Width (iOS 27+)
+
+In iOS 27 the compact and minimal Dynamic Island presentations also appear in
+landscape, where they cannot grow in width. Read `isDynamicIslandLimitedInWidth`
+inside compact and minimal views and render a narrower fallback when limited.
+Views not tested against this value can truncate or clip in landscape.
+
+```swift
+struct CompactTrailingView: View {
+    @Environment(\.isDynamicIslandLimitedInWidth) var isLimitedInWidth
+    let state: RideAttributes.ContentState
+
+    var body: some View {
+        if isLimitedInWidth {
+            Image(systemName: "car.fill")
+                .foregroundStyle(.green)
+        } else {
+            Text(timerInterval: state.etaRange, countsDown: true)
+                .frame(width: 44)
+                .monospacedDigit()
+        }
+    }
+}
+```
+
+Use the environment value only inside `compactLeading`, `compactTrailing`, and
+`minimal` views; expanded and Lock Screen layouts are unaffected.
 
 ## Lock Screen Layout with Timer and Progress
 

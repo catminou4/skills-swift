@@ -33,6 +33,7 @@ updates, Xcode setup, and advanced patterns.
 - [Smart Stack Relevance](#smart-stack-relevance)
 - [Design Patterns](#design-patterns)
 - [iOS 26 Additions](#ios-26-additions)
+- [iOS 27 Additions](#ios-27-additions)
 - [Common Mistakes](#common-mistakes)
 - [Review Checklist](#review-checklist)
 - [References](#references)
@@ -196,6 +197,7 @@ struct CategoryProvider: AppIntentTimelineProvider {
 | `.systemMedium` | iOS, iPadOS, macOS |
 | `.systemLarge` | iOS, iPadOS, macOS |
 | `.systemExtraLarge` | iPadOS only |
+| `.systemExtraLargePortrait` | iOS 27+, iPadOS 27+, macOS 27+, visionOS 26+ |
 | `.accessoryCircular` | iOS, watchOS |
 | `.accessoryRectangular` | iOS, watchOS |
 | `.accessoryInline` | iOS, watchOS |
@@ -391,6 +393,19 @@ Control push reloads:
 Small system widgets can appear in CarPlay on iOS 26+. Ensure layouts are
 legible at a glance; taps and controls depend on vehicle touch support and, for
 opening the app, CarPlay integration.
+
+## iOS 27 Additions
+
+### `.systemExtraLargePortrait` (iOS 27+)
+
+New portrait-orientation family on iOS Home Screen, iOS/iPadOS Today View,
+macOS Desktop, and visionOS (since 26). It is the portrait counterpart to
+`.systemExtraLarge`; handle it in the `widgetFamily` switch like the other
+large sizes.
+
+Compact and minimal Live Activity views in the Dynamic Island also appear in
+landscape on iOS 27 — see the `activitykit` skill for
+`isDynamicIslandLimitedInWidth` handling.
 
 ## Common Mistakes
 

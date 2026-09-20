@@ -8,6 +8,7 @@ countdown and paused states use a widget extension for custom Live Activity UI.
 ## Contents
 - Complete Alarm Scheduling Flow
 - Complete Countdown Timer Flow
+- Entity Annotation for Siri (iOS 27+)
 - Authorization Manager
 - State Observation with Async Sequences
 - Live Activity Widget Extension for Alarms
@@ -67,6 +68,41 @@ enum AlarmSchedulingError: Error {
     case notAuthorized
 }
 ```
+
+## Entity Annotation for Siri (iOS 27+)
+
+Annotate a scheduled alarm or timer with an App Intents `EntityIdentifier` so
+Siri and Apple Intelligence can refer to it when it fires (for example, "Snooze
+it"). Every `AlarmConfiguration` factory accepts an optional
+`appEntityIdentifier` parameter:
+
+```swift
+import AlarmKit
+import AppIntents
+
+struct AlarmEntity: AppEntity {
+    var id: UUID  // must persist across sessions
+    static let defaultQuery = AlarmEntityQuery()
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Alarm"
+    var displayRepresentation: DisplayRepresentation { "Wake-up alarm" }
+}
+
+let config = AlarmManager.AlarmConfiguration(
+    countdownDuration: snooze,
+    schedule: .relative(.init(
+        time: .init(hour: hour, minute: minute), repeats: .never
+    )),
+    attributes: attributes,
+    appEntityIdentifier: EntityIdentifier(for: AlarmEntity.self, identifier: id),
+    sound: .default
+)
+```
+
+The same parameter exists on `AlarmConfiguration.alarm(...)` and
+`AlarmConfiguration.timer(...)`. The annotated entity must have a stable,
+persistent identifier; `TransientAppEntity` cannot be annotated. Define the
+entity and its `EntityQuery` in the App Intents layer (see the `app-intents`
+skill).
 
 ## Complete Countdown Timer Flow
 
@@ -548,3 +584,5 @@ func pauseAlarmSafely(id: Alarm.ID) {
 - [Alarm.Schedule](https://sosumi.ai/documentation/alarmkit/alarm/schedule-swift.enum)
 - [Alarm.CountdownDuration](https://sosumi.ai/documentation/alarmkit/alarm/countdownduration-swift.struct)
 - [Scheduling an alarm with AlarmKit](https://sosumi.ai/documentation/alarmkit/scheduling-an-alarm-with-alarmkit)
+- [AlarmManager.AlarmConfiguration](https://sosumi.ai/documentation/alarmkit/alarmmanager/alarmconfiguration)
+- [EntityIdentifier](https://sosumi.ai/documentation/appintents/entityidentifier)

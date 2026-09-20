@@ -25,6 +25,7 @@ from the top-level StoreKit skill are in place.
 - [Product Promotion Management](#product-promotion-management)
 - [Price Increase Handling](#price-increase-handling)
 - [Unfinished Transactions](#unfinished-transactions)
+- [iOS 27 Additions](#ios-27-additions)
 - [Common Advanced Mistakes](#common-advanced-mistakes)
 
 ## SubscriptionStoreView Control Styles
@@ -344,21 +345,41 @@ let result = try await product.purchase(options: [
 
 ### Redemption Sheet
 
+iOS 27 reworks offer-code redemption: the SwiftUI modifier takes
+`RedeemOption` values and completes with `VerificationResult<Transaction>`:
+
 ```swift
 @State private var showRedeemSheet = false
 
 var body: some View {
     Button("Redeem Code") { showRedeemSheet = true }
-        .offerCodeRedemption(isPresented: $showRedeemSheet) { result in
+        .offerCodeRedemption(options: [], isPresented: $showRedeemSheet) { result in
             switch result {
-            case .success:
-                await storeManager.updateEntitlements()
+            case .success(let verification):
+                if case .verified = verification {
+                    await storeManager.updateEntitlements()
+                }
             case .failure(let error):
                 print("Redemption failed: \(error)")
             }
         }
 }
 ```
+
+For UIKit/AppKit, call `AppStore.presentOfferCodeRedeemSheet(from:options:)`
+and `await` the `VerificationResult<Transaction>`:
+
+```swift
+let verification = try await AppStore.presentOfferCodeRedeemSheet(
+    from: viewController, options: []
+)
+if case .verified = verification {
+    await storeManager.updateEntitlements()
+}
+```
+
+The older `offerCodeRedemption(isPresented:onCompletion:)` and
+`presentCodeRedemptionSheet()` forms are deprecated in iOS 27.
 
 ### Show Redeem Button on Subscription Store
 
@@ -368,8 +389,9 @@ var body: some View {
 
 ### Testing Offer Codes
 
-Test offer-code redemption in StoreKit configuration files and sandbox. In
-StoreKit testing, use the configured offer-code reference name:
+Test offer-code redemption in StoreKit configuration files and sandbox.
+Xcode 27 supports local offer-code testing for all product types. In StoreKit
+testing, use the configured offer-code reference name:
 
 ```swift
 try await product.purchase(options: [.codeOffer(referenceName: "SUMMER2024")])
@@ -610,10 +632,16 @@ case .purchased:
 case .familyShared:
     // Shared via Family Sharing -- may be revoked if sharer leaves
     break
+case .assigned:
+    // iOS 27+: assigned to a Managed Apple Account via volume purchasing
+    break
 default:
     break
 }
 ```
+
+An `.assigned` transaction is revoked with `revocationType`
+`.assignmentRevoked` when the organization unassigns the purchase.
 
 ### Family Shareable Products
 
@@ -760,6 +788,61 @@ func processUnfinishedTransactions() async {
 
 Keep the `Transaction.updates` listener as the primary always-on path, and use
 the sweep as a recovery tool rather than a replacement for the listener.
+
+## iOS 27 Additions
+
+### 12-Month Commitment Plans (iOS 26.4+)
+
+Monthly subscriptions can carry a 12-month commitment billed in monthly
+installments (announced at WWDC26; runtime iOS 26.4+, SDK 26.5). Read
+`subscription.pricingTerms` for the offered `PricingTerms`:
+
+```swift
+if let subscription = product.subscription {
+    for terms in subscription.pricingTerms {
+        // terms.billingPlanType: .upFront (default) or .monthly
+        // terms.billingDisplayPrice, terms.commitmentInfo?.price
+    }
+}
+```
+
+Preselect the installments plan on a store view or during purchase:
+
+```swift
+SubscriptionStoreView(groupID: "group")
+    .preferredSubscriptionPricingTerms { _, subscriptionInfo in
+        subscriptionInfo.pricingTerms.first { $0.billingPlanType == .monthly }
+    }
+
+try await product.purchase(options: [.billingPlanType(.monthly)])
+```
+
+Transactions carry `billingPlanType` (e.g. `"MONTHLY"`) and a `commitmentInfo`
+object (`billingPeriodNumber`, `totalBillingPeriods`, `commitmentExpiresDate`,
+`commitmentPrice`) in the JWS payload; renewal info carries
+`renewalBillingPlanType` and its own `commitmentInfo` describing the
+post-commitment renewal. Persist these fields server-side to track commitment
+progress.
+
+### Subscription Bundles and Suites (iOS 27+)
+
+New product types `Product.ProductType.subscriptionBundle` and
+`.subscriptionSuite`. For a bundle product,
+`product.subscription?.bundledSubscriptions` returns
+`[BundledSubscription]` describing the member subscriptions (populated only
+for `.subscriptionBundle`).
+
+### Volume Purchases (iOS 27+)
+
+Transactions assigned through Apple Business/School Manager appear with
+`ownershipType == .assigned` and are revoked with
+`revocationType == .assignmentRevoked`. `Transaction` queries return
+transactions assigned to the user's Managed Apple Account.
+
+### Advanced Commerce partner fields (iOS 27+)
+
+`Transaction.AdvancedCommerceInfo` and `RenewalInfo.AdvancedCommerceInfo`
+gained `partnerName` and `partnerId` for Advanced Commerce partner channels.
 
 ## Common Advanced Mistakes
 

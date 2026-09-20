@@ -1,6 +1,6 @@
 ---
 name: swift-testing
-description: "Writes and migrates Swift Testing framework tests with @Test, @Suite, #expect, #require, confirmation, traits, withKnownIssue, Attachment.record, processExitsWith exit tests and capture lists, Test.cancel, Issue.record warnings/manual failures, XCTest-to-Swift Testing migration, Xcode 27 interoperability modes, XCUITest UI-test boundaries, performance/snapshot boundaries, mocking, async patterns, and test organization. Use when writing tests, converting XCTest assertions such as XCTUnwrap or XCTFail, reviewing advanced Swift Testing API availability, or deciding when to keep XCTest/XCUITest."
+description: "Writes and migrates Swift Testing framework tests with @Test, @Suite, #expect, #require, confirmation, traits, withKnownIssue, Attachment.record, processExitsWith exit tests and capture lists, Test.cancel, Issue.record warnings/manual failures, XCTest-to-Swift Testing migration, Xcode 27 interoperability modes, Swift 6.4 test repetition (`swift test --repeat-until`), XCUITest UI-test boundaries, performance/snapshot boundaries, mocking, async patterns, and test organization. Use when writing tests, converting XCTest assertions such as XCTUnwrap or XCTFail, reviewing advanced Swift Testing API availability, or deciding when to keep XCTest/XCUITest."
 ---
 
 # Swift Testing
@@ -209,6 +209,11 @@ contains the detailed matrix and examples.
 | `Test.cancel()` in a test that awaits work | Make the test `async throws` and call `try Test.cancel("reason")`. `Test.cancel(_:)` requires Swift 6.3 / Xcode 26.4-era support. |
 | `Issue.record(..., severity: .warning)` | Use `Issue.record("message", severity: .warning)`. Warning severity is reported but does not fail the test, and requires Swift 6.3 / Xcode 26.4-era support. |
 | `Attachment(image, named:).record()` | Use `Attachment.record(image, named: "name", as: .png)`. Import `Testing` plus the relevant image framework; Apple-platform image values include `UIImage`, `CGImage`, `CIImage`, and `NSImage`. Image attachment recording requires Swift 6.3 / Xcode 26.4-era support. |
+
+Swift 6.4 / Xcode 27 also adds `swift test --repeat-until pass|fail` with
+`--maximum-repetitions N` (ST-0024): repetition is per test case, so only
+cases still meeting the condition re-run. See
+[references/testing-advanced.md](references/testing-advanced.md#test-repetition).
 
 ## Common Mistakes
 

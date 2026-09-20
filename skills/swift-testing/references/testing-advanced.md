@@ -1,6 +1,6 @@
 # Advanced Testing Patterns
 
-Warning-severity issues, programmatic test cancellation, and image attachments for Swift Testing.
+Warning-severity issues, programmatic test cancellation, image attachments, and test repetition for Swift Testing.
 
 ## Contents
 
@@ -8,6 +8,7 @@ Warning-severity issues, programmatic test cancellation, and image attachments f
 - [Programmatic Test Cancellation](#programmatic-test-cancellation)
 - [Exit Test Value Capturing](#exit-test-value-capturing)
 - [Image Attachments](#image-attachments)
+- [Test Repetition](#test-repetition)
 - [Version Gates](#version-gates)
 - [Proposal Reference](#proposal-reference)
 
@@ -99,6 +100,23 @@ Supported Apple-platform image types include:
 - `CIImage` when importing CoreImage
 - `NSImage` on macOS when importing AppKit
 
+## Test Repetition
+
+ST-0024 adds per-test-case repetition to `swift test` in Swift 6.4 / Xcode 27
+and newer.
+
+```sh
+swift test --repeat-until pass                    # rerun until every selected test passes
+swift test --repeat-until fail                    # rerun until a failure reproduces
+swift test --repeat-until fail --maximum-repetitions 100  # bounded
+```
+
+`--repeat-until` accepts `pass` or `fail`; omitting it makes repetition
+unconditional. Repetition is per test case — after the first run, only test
+cases that still meet the condition re-run. The `swift test` flag is
+`--maximum-repetitions`; the equivalent Swift Testing entrypoint flag is
+`--repetitions`.
+
 ## Version Gates
 
 | Feature | Minimum toolchain / platform |
@@ -109,6 +127,7 @@ Supported Apple-platform image types include:
 | `Issue.record(_:severity:)` warnings | Swift 6.3 / Xcode 26.4 |
 | `Test.cancel(_:)` | Swift 6.3 / Xcode 26.4 |
 | Image attachment recording | Swift 6.3 / Xcode 26.4 |
+| `swift test --repeat-until` / `--maximum-repetitions` | Swift 6.4 / Xcode 27 |
 
 Do not use exit tests for iOS, tvOS, or watchOS runtime targets. For iOS app code that needs fatal-path coverage, move the exit behavior behind a smaller pure Swift API, test the non-exiting branches directly, and reserve exit tests for a supported host/tool target.
 
@@ -121,3 +140,4 @@ Do not use exit tests for iOS, tvOS, or watchOS runtime targets. For iOS app cod
 | ST-0013 | Warning-severity issues (`Issue.record` with `severity:`) |
 | ST-0014 | Image attachments on Apple platforms (cross-import overlays) |
 | ST-0016 | Programmatic test cancellation (`try Test.cancel()`) |
+| ST-0024 | Per-test-case repetition (`--repeat-until`, `--maximum-repetitions`) |

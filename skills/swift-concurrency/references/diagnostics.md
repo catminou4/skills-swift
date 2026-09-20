@@ -16,6 +16,7 @@ Common Swift concurrency compiler warnings and errors with their fixes.
 | `Passing closure as a 'sending' parameter risks causing data races` | Closure captures values that could race | Ensure captures are Sendable or don't escape the isolation domain |
 | `Task-isolated value of type 'X' passed as a strongly transferred parameter` | Moving a value out of a task unsafely | Copy the value or use `sending` return |
 | `Global variable 'x' is not concurrency-safe` | Mutable global without isolation | Add `@MainActor`, make it `nonisolated(unsafe)` (with justification), or use actor |
+| `Unstructured throwing task created by 'init(priority:operation:)' is unused [#NoUseUnstructuredThrowingTask]` (Swift 6.4) | `Task { try ... }` result discarded, hiding that the operation throws | Store the task (`let task = Task { ... }`) or explicitly discard it with `_ =`; throwing unstructured initializers use typed throws |
 
 ## Swift 6.2 Approachable Concurrency Changes
 

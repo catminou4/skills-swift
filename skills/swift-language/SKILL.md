@@ -1,6 +1,6 @@
 ---
 name: swift-language
-description: "Apply modern Swift language patterns and idioms for non-concurrency, non-SwiftUI code. Covers if/switch expressions (Swift 5.9+), typed throws (Swift 6+), result builders, property wrappers, opaque and existential types (some vs any), guard patterns, Never type, Regex builders (Swift 5.7+), basic Codable shaping (CodingKeys, custom decoding, nested containers), modern collection APIs (count(where:), contains(where:), replacing()), basic FormatStyle usage, and string interpolation patterns. Use when writing core Swift code involving generics, protocols, enums, closures, or modern language features; route deep Codable to swift-codable, detailed formatting/localization to swift-formatstyle, and API naming to swift-api-design-guidelines."
+description: "Apply modern Swift language patterns and idioms for non-concurrency, non-SwiftUI code. Covers if/switch expressions (Swift 5.9+), typed throws (Swift 6+), result builders, property wrappers, opaque and existential types (some vs any), guard patterns, Never type, Regex builders (Swift 5.7+), basic Codable shaping (CodingKeys, custom decoding, nested containers), modern collection APIs (count(where:), contains(where:), replacing()), Swift 6.4 additions (anyAppleOS availability, @diagnose warning control), basic FormatStyle usage, and string interpolation patterns. Use when writing core Swift code involving generics, protocols, enums, closures, or modern language features; route deep Codable to swift-codable, detailed formatting/localization to swift-formatstyle, and API naming to swift-api-design-guidelines."
 ---
 
 # Swift Language Patterns
@@ -345,6 +345,10 @@ let byCategory = Dictionary(grouping: items, by: \.category)
 let freq = words.reduce(into: [:]) { counts, word in
     counts[word, default: 0] += 1
 }
+
+// Swift 6.4 (SE-0508): trailing closures after array/dictionary literal type syntax
+let names = [String] { "a" }
+let lookup = [String: Int] { (key: "a", value: 42) }
 ```
 
 ## FormatStyle
@@ -396,4 +400,4 @@ Extend `DefaultStringInterpolation` for domain-specific formatting. Use `"""` fo
 ## References
 
 - Extended patterns and Codable examples: [references/swift-patterns-extended.md](references/swift-patterns-extended.md)
-- Attributes and C interop: [references/swift-attributes-interop.md](references/swift-attributes-interop.md)
+- Attributes, warning control, availability, and C interop: [references/swift-attributes-interop.md](references/swift-attributes-interop.md)

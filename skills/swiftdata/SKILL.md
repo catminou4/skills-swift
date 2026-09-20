@@ -1,6 +1,6 @@
 ---
 name: swiftdata
-description: "Implement, review, or improve data persistence using SwiftData. Use when defining @Model classes with @Attribute, @Relationship, @Transient, #Unique, or #Index; when querying with @Query, #Predicate, FetchDescriptor, or SortDescriptor; when configuring ModelContainer and ModelContext for SwiftUI or background work with @ModelActor; when planning schema migrations with VersionedSchema and SchemaMigrationPlan; when setting up CloudKit sync with ModelConfiguration; or when coexisting with or migrating from Core Data."
+description: "Implement, review, or improve data persistence using SwiftData. Use when defining @Model classes with @Attribute, @Relationship, @Transient, #Unique, or #Index; when querying with @Query, #Predicate, FetchDescriptor, or SortDescriptor; when configuring ModelContainer and ModelContext for SwiftUI or background work with @ModelActor; when planning schema migrations with VersionedSchema and SchemaMigrationPlan; when setting up CloudKit sync with ModelConfiguration; when sectioning @Query results with sectionBy:/SectionedResults, observing stores with ResultsObserver or HistoryObserver, or persisting third-party Codable types via @Attribute(.codable) (all iOS 27+); or when coexisting with or migrating from Core Data."
 ---
 
 # SwiftData
@@ -51,7 +51,7 @@ class Trip {
 }
 ```
 
-**`@Attribute` options**: `.externalStorage`, `.unique`, `.spotlight`, `.allowsCloudEncryption`, `.preserveValueOnDeletion`, `.ephemeral`, `.transformable(by:)`. Rename: `@Attribute(originalName: "old_name")`.
+**`@Attribute` options**: `.externalStorage`, `.unique`, `.spotlight`, `.allowsCloudEncryption`, `.preserveValueOnDeletion`, `.ephemeral`, `.transformable(by:)`, `.codable` (iOS 27+; stores the Codable representation, opaque to `#Predicate`/`SortDescriptor`). Rename: `@Attribute(originalName: "old_name")`.
 
 **`@Relationship`**: `deleteRule:` `.cascade`/`.nullify`(default)/`.deny`/`.noAction`. Specify `inverse:` for reliable behavior. Unidirectional (iOS 18+): `inverse: nil`.
 
@@ -168,7 +168,27 @@ struct RecentView: View {
     @Query(RecentView.desc) private var recent: [Trip]
     var body: some View { List(recent) { trip in Text(trip.name) } }
 }
+
+// Sectioned query (iOS 27+)
+struct TripsByDestination: View {
+    @Query(sort: \.startDate, sectionBy: \.destination)
+    private var trips: SectionedResults<Trip, String>
+
+    var body: some View {
+        List {
+            ForEach(trips) { section in  // ResultsSection<Trip, String>
+                Section(section.title) {
+                    ForEach(section) { trip in Text(trip.name) }
+                }
+            }
+        }
+    }
+}
 ```
+
+For live tracking outside a view's `@Query` (iOS 27+), `ResultsObserver`
+exposes observable `results`/`sections` and `HistoryObserver` reports
+remote-change history -- see [references/swiftdata-advanced.md](references/swiftdata-advanced.md#notification-observation).
 
 ## #Predicate
 
@@ -358,6 +378,10 @@ struct DetailView: View {
 // CORRECT: @ModelActor actor Handler { func fetch() throws { ... } }
 ```
 
+**13. Filtering a `.codable` attribute:** `@Attribute(.codable)` storage is
+opaque to `#Predicate` and `SortDescriptor` (iOS 27+). Keep fields that must
+be queried or sorted as separate scalar or composite attributes.
+
 ## Review Checklist
 
 - [ ] Every `@Model` is a class with a designated initializer
@@ -375,10 +399,11 @@ struct DetailView: View {
 - [ ] Explicit `save()` in `@ModelActor` methods
 - [ ] Previews use `ModelConfiguration(isStoredInMemoryOnly: true)`
 - [ ] `@Model` classes accessed from SwiftUI views are on `@MainActor` via `@ModelActor` or MainActor isolation
+- [ ] `.codable` attributes are not used inside `#Predicate` or `SortDescriptor`; iOS 27+ sectioned lists use `sectionBy:`/`SectionedResults` instead of manual grouping
 
 ## References
 
-- [references/swiftdata-advanced.md](references/swiftdata-advanced.md) — custom data stores, history tracking, CloudKit, composite attributes, model inheritance, undo/redo, performance
+- [references/swiftdata-advanced.md](references/swiftdata-advanced.md) — custom data stores, history tracking, CloudKit, composite attributes, model inheritance, undo/redo, store observers (iOS 27+), performance
 - [references/swiftdata-queries.md](references/swiftdata-queries.md) — `@Query` variants, FetchDescriptor deep dive, sectioned queries, dynamic queries, background fetch
 - [references/core-data-coexistence.md](references/core-data-coexistence.md) — Core Data + SwiftData coexistence and migration boundaries
 - [references/predicate-pitfalls.md](references/predicate-pitfalls.md) — #Predicate runtime crashes, unsupported expressions, safe patterns

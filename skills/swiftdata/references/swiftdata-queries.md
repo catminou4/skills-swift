@@ -303,9 +303,49 @@ struct SortedTripList: View {
 
 ## Sectioned Queries Pattern
 
-Current Apple docs include `sectionBy:` `Query` initializers for sectioned
-queries in iOS 27 / Xcode 27 beta. Use them only when the deployment target and
-SDK support those beta APIs.
+iOS 27 / Xcode 27 beta adds `sectionBy:` `Query` initializers that group
+results into `SectionedResults<Element, String>`. Section keys are a
+`KeyPath<Element, String>` or `KeyPath<Element, String?>`; `nil` values map to
+the empty-string section. Iterating `SectionedResults` yields
+`ResultsSection` values with a `title`; each section is itself a collection of
+models. `items[sectionTitle: "Work"]` gives O(1) lookup by title.
+
+```swift
+struct SectionedTripListView: View {
+    @Query(sort: \.startDate, sectionBy: \.destination)
+    private var trips: SectionedResults<Trip, String>
+
+    var body: some View {
+        List {
+            ForEach(trips) { section in          // ResultsSection<Trip, String>
+                Section(section.title) {          // e.g. "Paris", "London"
+                    ForEach(section) { trip in
+                        TripRow(trip: trip)
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+When the `@Query` property stays `[Element]`-typed, iterate `_trips.sections`
+through the underscore accessor; it returns an empty collection when the query
+was not created with `sectionBy:`.
+
+```swift
+@Query(sort: \.startDate, sectionBy: \.destination) private var trips: [Trip]
+
+var body: some View {
+    List {
+        ForEach(_trips.sections) { section in
+            Section(section.title) {
+                ForEach(section) { trip in TripRow(trip: trip) }
+            }
+        }
+    }
+}
+```
 
 For iOS 26-compatible guidance, custom grouping, or section keys derived from
 formatters/business logic, build sectioned views manually:

@@ -1,6 +1,6 @@
 # Swift Attributes and C Interoperability
 
-Attributes and interoperability features for Swift. Covers C-calling-convention export, module disambiguation, performance annotations, and symbol visibility control.
+Attributes and interoperability features for Swift. Covers C-calling-convention export, module disambiguation, performance annotations, symbol visibility control, per-declaration warning control, and cross-platform availability.
 
 ## Contents
 
@@ -8,6 +8,8 @@ Attributes and interoperability features for Swift. Covers C-calling-convention 
 - [Module Selectors](#module-selectors)
 - [Performance Annotations](#performance-annotations)
 - [Symbol Visibility and Layout](#symbol-visibility-and-layout)
+- [`@diagnose` Warning Control (Swift 6.4)](#diagnose-warning-control-swift-64)
+- [`anyAppleOS` Availability (Swift 6.4)](#anyappleos-availability-swift-64)
 
 ## C Interoperability — `@c` Attribute
 
@@ -102,3 +104,39 @@ var configFlag: Int32 = 1
 
 Use it only on stored variables in non-generic contexts with compile-time-known
 or static initialization.
+
+## `@diagnose` Warning Control (Swift 6.4)
+
+SE-0522 adds `@diagnose`, per-declaration source-level control over compiler
+warning behavior (previously the `SourceWarningControl` experimental feature).
+`@diagnose(GroupID, as: error|warning|ignored, reason: "...")` overrides the
+named diagnostic group within the annotated declaration's lexical scope,
+relative to its enclosing scope. `reason:` is an optional string literal.
+
+```swift
+@diagnose(DeprecatedDeclaration, as: warning, reason: "Must maintain compatibility until end of release cycle")
+func bridgeToLegacySystem() {
+    oldAPI()  // warning: 'oldAPI()' is deprecated [#DeprecatedDeclaration]
+}
+```
+
+Use it to scope a warning upgrade, downgrade, or suppression to one declaration
+instead of disabling it module-wide.
+
+## `anyAppleOS` Availability (Swift 6.4)
+
+Availability across macOS, iOS, tvOS, watchOS, and visionOS can be specified
+with a single `anyAppleOS` version, starting at `26.0`:
+
+```swift
+@available(anyAppleOS 26.0, *)
+func functionAvailableOnVersion26() { /* ... */ }
+
+if #available(anyAppleOS 26.0, *) {
+    // macOS 26, iOS 26, watchOS 26, tvOS 26, visionOS 26
+}
+```
+
+A platform-specific availability listed alongside `anyAppleOS` takes precedence
+when building for that platform: `if #available(anyAppleOS 26.0, macOS 26.4, *)`
+requires macOS 26.4 and version 26 on the other Apple OSes.

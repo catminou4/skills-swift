@@ -253,3 +253,4 @@ enum DeviceIntegrityError: Error {
 - [Preparing to use the app attest service](https://sosumi.ai/documentation/devicecheck/preparing-to-use-the-app-attest-service)
 - [Attestation Object Validation Guide](https://sosumi.ai/documentation/devicecheck/attestation-object-validation-guide)
 - [App Attest Environment](https://sosumi.ai/documentation/bundleresources/entitlements/com.apple.developer.devicecheck.appattest-environment)
+- [TrustInsights framework](https://sosumi.ai/documentation/trustinsights) (iOS 27+ — social-engineering risk evaluation; requires entitlement and internet connectivity)

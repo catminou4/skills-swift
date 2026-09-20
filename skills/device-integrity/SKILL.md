@@ -1,6 +1,6 @@
 ---
 name: device-integrity
-description: "Verify device legitimacy and app integrity using DeviceCheck (DCDevice per-device bits) and App Attest (DCAppAttestService key generation, attestation, and assertion flows). Use when implementing fraud prevention, detecting compromised devices, validating app authenticity with Apple's servers, protecting sensitive API endpoints with attested requests, or adding device verification to a backend architecture."
+description: "Verify device legitimacy and app integrity using DeviceCheck (DCDevice per-device bits) and App Attest (DCAppAttestService key generation, attestation, and assertion flows, including macOS support). Use when implementing fraud prevention, detecting compromised devices, validating app authenticity with Apple's servers, protecting sensitive API endpoints with attested requests, adding device verification to a backend architecture, or evaluating social-engineering risk with the TrustInsights framework (iOS 27+)."
 ---
 
 # Device Integrity
@@ -88,7 +88,10 @@ server API.
 [`DCAppAttestService`](https://sosumi.ai/documentation/devicecheck/dcappattestservice)
 validates that a specific instance of your app on a specific device is
 legitimate. It uses a hardware-backed key in the Secure Enclave to create
-cryptographic attestations and assertions. Available on iOS 14+.
+cryptographic attestations and assertions. Available on iOS 14+; Apple's June
+2026 DeviceCheck documentation update also brings App Attest to macOS with
+additional device information to protect against unauthorized modification
+and fraud.
 
 The flow has three phases:
 1. **Key generation** -- create a key pair in the Secure Enclave.
@@ -345,6 +348,15 @@ entitlement or subscription authorization, TLS, certificate pinning, or general
 networking security. Treat those as handoffs to authentication, networking, or
 broader security guidance, and still enforce normal authentication and
 authorization after App Attest passes.
+
+### TrustInsights (iOS 27+)
+
+The TrustInsights framework (iOS 27 SDK) requests a system evaluation of
+whether the user is at risk of a social-engineering threat — complementary to
+App Attest for fraud-sensitive flows, but a risk signal rather than proof of
+app integrity. Declare the TrustInsights capability on the app target in
+Xcode; the framework requires an entitlement and internet connectivity to
+return results.
 
 ## Error Handling
 

@@ -165,7 +165,11 @@ sparingly for tracking unexpected mutations.
 (lldb) frame variable                              # All variables in frame
 (lldb) up                                          # Move up one frame
 (lldb) down                                        # Move down one frame
+(lldb) language swift task tree                    # Xcode 27+: tree of all known Swift tasks
 ```
+
+Xcode 27 also ships LLDB with an `lldb-mcp` MCP server for agent-driven
+debugging sessions.
 
 ### Thread Return (skip execution)
 

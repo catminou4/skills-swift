@@ -14,6 +14,7 @@ Detailed template-by-template guide for profiling iOS apps with Instruments. Com
 - [Power Profiler](#power-profiler)
 - [File Activity](#file-activity)
 - [System Trace](#system-trace)
+- [Swift Concurrency and Swift Executors (Xcode 27)](#swift-concurrency-and-swift-executors-xcode-27)
 - [xctrace CLI](#xctrace-cli)
 - [Custom Instruments with os_signpost](#custom-instruments-with-os_signpost)
 - [Automation and CI Integration](#automation-and-ci-integration)
@@ -247,6 +248,29 @@ faults, system calls, and inter-process communication.
 This is the most advanced template — use it after Time Profiler when you
 need OS-level detail.
 
+## Swift Concurrency and Swift Executors (Xcode 27)
+
+**When to use**: Debugging task storms, actor contention, and executor
+behavior in async-heavy code.
+
+- **Swift Concurrency** groups Tasks into "Swift Task Collection" tracks by
+  name or creation site; tracks can display task lifetimes or task states.
+  Tasks and Actors are shown even when their lifetime began before the
+  recording, and Tasks can appear in an "Unknown" state. Recording Swift
+  Concurrency alongside Time Profiler or CPU Profiler enables a "Profile"
+  detail option with a call tree built from profiling data captured while
+  the item was in state Running.
+- **Swift Executors** is a separate instrument showing tracks for the
+  Cooperative Thread Pool, the Main Actor, and types conforming to
+  `TaskExecutor` or `SerialExecutor`. Executor names resolve on iOS 27,
+  iPadOS 27, macOS 27, tvOS 27, watchOS 27, and visionOS 27; on older
+  systems they fall back to "Unknown executor".
+
+Xcode 27 Instruments requires target devices running at least iOS 17,
+watchOS 10, or tvOS 17. The Foundation Models instrument separately traces
+instructions, prompts, responses, token usage, and inference performance
+for apps using the Foundation Models framework.
+
 ## xctrace CLI
 
 ### Recording
@@ -272,6 +296,17 @@ xcrun xctrace record \
     --template "Time Profiler" \
     --instrument "Allocations" \
     --output ~/traces/combined.trace \
+    --launch -- /path/to/MyApp.app
+
+# Xcode 27+: print a template's recording options as JSON, then pass a
+# modified JSON file back to customize the recording
+xcrun xctrace record \
+    --template "Time Profiler" \
+    --show-recording-options > options.json
+xcrun xctrace record \
+    --template "Time Profiler" \
+    --recording-options options.json \
+    --output ~/traces/custom.trace \
     --launch -- /path/to/MyApp.app
 ```
 
@@ -332,6 +367,10 @@ func fetchUser(id: String) async throws -> User {
 2. Your custom intervals appear as labeled bars in the timeline.
 3. Events appear as point markers.
 4. Filter by subsystem or category to isolate your signposts.
+
+On Xcode 27, os_signpost displays one track per signpost name nested under
+each category, and states annotated with the StateReporting API appear in
+the Points of Interest track.
 
 ### Integration with MetricKit
 

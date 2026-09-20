@@ -43,6 +43,9 @@ execute code and cannot trigger side effects. Expression evaluation can execute
 or mutate program state, and hardware watchpoints are scarce, so use both
 deliberately.
 
+Xcode 27 adds `language swift task tree`, which prints a tree of all Swift tasks
+the debugger knows about, and ships LLDB with an `lldb-mcp` MCP server.
+
 Load [references/lldb-patterns.md](references/lldb-patterns.md) for the complete
 inspection, breakpoint/logpoint, expression, watchpoint, thread navigation, and
 symbolic-breakpoint command tables.
@@ -242,6 +245,11 @@ Build settings to inspect first:
 | **Power Profiler** | Battery drain, thermal pressure, background energy impact |
 | **File Activity** | Excessive disk I/O, slow file operations |
 | **System Trace** | Thread scheduling, syscalls, virtual memory faults |
+| **Swift Concurrency** | Task, collection, actor, and executor lifetimes; record alongside Time Profiler or CPU Profiler to get a "Profile" call-tree detail |
+| **Swift Executors** (iOS 27+) | Cooperative thread pool, Main Actor, and custom `TaskExecutor`/`SerialExecutor` tracks; executor names require iOS 27/watchOS 27/tvOS 27/macOS 27 or later, older systems show "Unknown executor" |
+| **Foundation Models** | Tracing instructions, prompts, responses, token usage, and inference performance for Foundation Models usage |
+
+Xcode 27 Instruments requires target iOS, watchOS, and tvOS devices running at least iOS 17, watchOS 10, or tvOS 17.
 
 ### xctrace CLI for CI Profiling
 
@@ -261,6 +269,14 @@ xcrun xctrace list templates
 
 # List connected devices
 xcrun xctrace list devices
+```
+
+On Xcode 27+, dump a template's or instrument's recording options as JSON, then
+feed a modified file back:
+
+```bash
+xcrun xctrace record --template "Time Profiler" --show-recording-options > options.json
+xcrun xctrace record --template "Time Profiler" --recording-options options.json ...
 ```
 
 Use one `--template` per recording; add extra instruments with

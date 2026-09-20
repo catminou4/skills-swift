@@ -1,6 +1,6 @@
 ---
 name: app-store-optimization
-description: "Optimize App Store product pages for search visibility and conversion. Use for App Store Optimization (ASO), keyword research, app name/subtitle/keyword-field strategy, conversion-focused descriptions and promotional text, screenshot captions and ordering, Custom Product Pages with assigned search keywords, In-App Events, Product Page Optimization tests, localized metadata, ratings/review strategy, and in-app review prompt timing with RequestReviewAction or AppStore.requestReview. Also use when routing ASO vs App Store review, privacy/ATT, or StoreKit implementation boundaries."
+description: "Optimize App Store product pages for search visibility and conversion. Use for App Store Optimization (ASO), keyword research, app name/subtitle/keyword-field strategy, conversion-focused descriptions and promotional text, screenshot captions and ordering, Custom Product Pages with assigned search keywords, In-App Events, Product Page Optimization tests, creative assets and Asset Library (WWDC26), localized metadata, ratings/review strategy, and in-app review prompt timing with RequestReviewAction or AppStore.requestReview. Also use when routing ASO vs App Store review, privacy/ATT, or StoreKit implementation boundaries."
 ---
 
 # App Store Optimization (ASO)
@@ -143,6 +143,10 @@ If a preview video is present, it occupies the first slot. The first frame becom
 
 For screenshot device requirements and compliance rules, see the `app-store-review` skill.
 
+### Creative assets and Asset Library (iOS 27 / WWDC26)
+
+WWDC26 adds creative assets: images and videos that go beyond in-app screenshots and can appear in the product page header, in App Store and Apple Games app search results, on custom product pages, and in Apple Ads campaigns. Manage them in App Store Connect's Asset Library — upload images, videos, app previews, and screenshots once, reuse them across custom product pages and In-App Events, and submit assets for approval independently of an app version. A product page preview tool in App Store Connect shows how the header, name, description, screenshots, and search-results creative render before publishing.
+
 **Validation checkpoint:** Preview each localized product page at first-fold size.
 Confirm that the first three visible assets communicate distinct benefits, that
 captions match the UI and public claims, and that the ordering answers the same
@@ -186,6 +190,7 @@ Use separate pages for paid search ad groups, social campaigns, feature-specific
 ### Setup
 
 - Each Custom Product Page gets a unique App Store URL usable in ad campaigns, deep links, and web pages.
+- Creative assets managed in Asset Library can be reused on custom product pages (WWDC26).
 - Approved pages can also appear in App Store search for assigned keywords from the latest approved app version.
 - Pages can be localized independently.
 - Create pages in App Store Connect under the Custom Product Pages tab.
@@ -199,7 +204,7 @@ In-app events surface in App Store search results, on the Today tab, and in pers
 
 ### Event types
 
-Choose the Apple event badge that matches the actual in-app experience: Challenge, Competition, Live Event, Major Update, New Season, Premiere, or Special Event. Do not manufacture events without real time-bound content.
+Choose the Apple event badge that matches the actual in-app experience: Challenge, Competition, Live Event, Major Update, New Season, Premiere, or Special Event. Games whose Featuring Nomination is accepted on the Apple Games app unlock three additional badges: In-Game Offer, Now On Sale, and Try Before You Buy (WWDC26, US rollout first). Do not manufacture events without real time-bound content.
 
 ### Metadata limits
 
@@ -223,6 +228,7 @@ App Store Connect provides native testing for product page elements.
 - App icon (alternate icons)
 - Screenshots (order, content, captions)
 - App preview video
+- Creative assets from Asset Library (WWDC26)
 
 Each test can include up to three treatments against the original product page, which serves as the default baseline.
 

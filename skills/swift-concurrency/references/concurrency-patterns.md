@@ -170,7 +170,9 @@ inherits surrounding isolation and is implicitly awaited at scope exit, but it
 does not hide cancellation from cleanup code.
 
 Use `withTaskCancellationShield` only for short cleanup or rollback that must
-finish after cancellation. Do not wrap normal user-cancelable work in a shield.
+finish after cancellation. Shields also prevent automatic cancellation
+propagation into child tasks (`async let`, task groups). Do not wrap normal
+user-cancelable work in a shield.
 
 ## Isolated Conformances
 

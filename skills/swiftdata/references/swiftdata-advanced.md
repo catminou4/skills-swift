@@ -579,6 +579,24 @@ via key-path navigation in `#Predicate`:
 }
 ```
 
+For `Codable` types you do not control (third-party packages, generated code),
+`@Attribute(.codable)` stores the property's Codable representation directly
+(iOS 27+ beta):
+
+```swift
+@Model
+class Trip {
+    var name: String
+    @Attribute(.codable) var route: ExternalRoute  // third-party Codable type
+}
+```
+
+`.codable` storage is opaque to `#Predicate` and `SortDescriptor` -- inner
+fields cannot be filtered or sorted. The schema does not track properties
+inside the Codable type, so adding or removing them does not trigger
+migration; the type must remain forward- and backward-compatible on its own.
+Prefer composite attributes when you own the type and need queryable fields.
+
 ---
 
 ## Model Inheritance (iOS 26+)
@@ -890,6 +908,42 @@ NotificationCenter.default.publisher(for: ModelContext.didSave, object: modelCon
 | `.deletedIdentifiers` | IDs of deleted models |
 | `.invalidatedAllIdentifiers` | All data invalidated (e.g., store reset) |
 | `.queryGeneration` | Query generation token |
+
+### Store Observers (iOS 27+ beta)
+
+`ResultsObserver<Element, SectionTitle>` is an `Observable` class that tracks a
+fetch in a `ModelContext` and exposes live `results` (plus `sections` when
+`sectionBy:` is given). It responds to local saves, changes from other
+contexts on the same container, and external changes from other processes or
+CloudKit sync. Use `Never` as `SectionTitle` for unsectioned observation.
+
+```swift
+let observer = try ResultsObserver<Trip, Never>(
+    filterBy: #Predicate { $0.isFavorite },
+    sortBy: [SortDescriptor(\.startDate)],
+    modelContext: modelContext
+)
+
+observer.results            // current matching trips
+observer.element(at: indexPath)
+observer.indexPath(for: trip)
+```
+
+A `modelContainer:` initializer variant observes the container directly.
+
+`HistoryObserver` is an `Observable` + `Sendable` class that listens for
+`ModelContainer/remoteChange` and increments `eventCounter` when relevant
+transactions arrive.
+
+```swift
+let historyObserver = try HistoryObserver(
+    observedModels: [Trip.self],   // empty array observes all model types
+    modelContainer: container
+)
+```
+
+`historyTokens:` resumes from saved history positions and `authors:` filters
+by transaction author.
 
 ---
 

@@ -281,6 +281,10 @@ let elapsed = continuous.now - continuous.epoch  // Duration since system boot
 6. Use `sending` parameters (SE-0430) for finer-grained isolation control.
 7. Use `@preconcurrency import` only for third-party libraries you cannot
    modify. Plan to remove it.
+8. Swift 6.4 (SE-0518): `class Base: ~Sendable` explicitly suppresses
+   `Sendable` on a base class -- prevents automatic `Sendable` inference and
+   marks the type non-`Sendable` without stopping subclasses from declaring
+   their own conformance.
 
 ## Structured Concurrency Patterns
 
@@ -302,7 +306,10 @@ func fetchData() async throws -> Data {
 }
 ```
 
-**Task:** Unstructured, inherits caller context.
+**Task:** Unstructured, inherits caller context. Swift 6.4: throwing task
+initializers use typed throws and warn when the result is silently dropped
+(`#NoUseUnstructuredThrowingTask`) -- store the task or explicitly discard it
+with `_ =`.
 ```swift
 Task { await doWork() }
 ```
@@ -339,10 +346,11 @@ try await withThrowingTaskGroup(of: Item.self) { group in
   `try Task.checkCancellation()` in loops.
 - Use `.task` modifier in SwiftUI -- it handles cancellation on view disappear.
 - Use `withTaskCancellationHandler` for cleanup.
-- Swift 6.4 / iOS 27+ beta: use `withTaskCancellationShield` only for short
-  cleanup or rollback that must complete after cancellation. Inside the shield,
-  `Task.isCancelled` is false and `Task.checkCancellation()` does not throw;
-  cancellation is observable again after the scope exits.
+- Swift 6.4 / iOS 27+ beta: use `withTaskCancellationShield` (SE-0504) only
+  for short cleanup or rollback that must complete after cancellation. Inside
+  the shield, `Task.isCancelled` is false, `Task.checkCancellation()` does not
+  throw, and cancellation is not propagated into child tasks (`async let`,
+  task groups); cancellation is observable again after the scope exits.
 - Cancel stored tasks in `deinit` or `onDisappear`.
 
 ## Actor Reentrancy

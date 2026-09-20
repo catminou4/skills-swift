@@ -1,6 +1,6 @@
 ---
 name: ios-localization
-description: "Implement, review, or improve localization and internationalization in iOS/macOS apps — String Catalogs (.xcstrings), generated localizable symbols, stable key naming, LocalizedStringKey, LocalizedStringResource, pluralization, FormatStyle for numbers/dates/measurements, right-to-left layout, Dynamic Type, and locale-aware formatting. Use when adding multi-language support, setting up String Catalogs, enabling generated symbols for compile-time-safe localization keys, handling plural forms, formatting dates/numbers/currencies for different locales, testing localizations, or making UI work correctly in RTL languages like Arabic and Hebrew."
+description: "Implement, review, or improve localization and internationalization in iOS/macOS apps — String Catalogs (.xcstrings), generated localizable symbols, stable key naming, LocalizedStringKey, LocalizedStringResource, pluralization, FormatStyle for numbers/dates/measurements, right-to-left layout, Dynamic Type, and locale-aware formatting. Use when adding multi-language support, setting up String Catalogs, enabling generated symbols for compile-time-safe localization keys, handling plural forms, formatting dates/numbers/currencies for different locales, testing localizations, using Xcode 27 agent translation in String Catalogs, or making UI work correctly in RTL languages like Arabic and Hebrew."
 ---
 
 # iOS Localization & Internationalization
@@ -70,6 +70,8 @@ Xcode derives symbol names by camelCasing the key: `settings.notifications.toggl
 Generated symbols are `internal`. For cross-module access, create a public wrapper extension. For heavier multi-module setups, use [xcstrings-tool](https://github.com/liamnichols/xcstrings-tool) instead.
 
 For the full generated symbols reference — extraction states, symbol derivation rules, and cross-module patterns — see [references/string-catalogs.md](references/string-catalogs.md).
+
+Xcode 27 adds agent-assisted translation inside the String Catalog editor: the Generate Translations button and per-key context menu hand strings to an Xcode agent, which can add missing languages and catalogs as it translates. A localization comment of "do not translate" marks the entry Don't Translate in the catalog and exports `translate="no"` in XLIFF, and exported XLIFFs carry `state-qualifier="leveraged-mt"` on machine-translated strings. Localization export also extracts `NSLocalizedString`-style macros from header files, not only implementation files.
 
 ## String Types -- Decision Guide
 
@@ -315,6 +317,7 @@ Use Xcode scheme settings to override the app language without changing device l
 - [ ] App Intents and widgets use `LocalizedStringResource`
 - [ ] No `NSLocalizedString` usage in new code
 - [ ] Comments provided for ambiguous keys (context for translators)
+- [ ] Non-translatable strings use a "do not translate" localization comment (Xcode 27 exports `translate="no"`)
 - [ ] `@ScaledMetric` used for spacing that must scale with Dynamic Type
 - [ ] Currency formatting uses explicit currency code, not locale default
 - [ ] Pseudolocalization tested (accented, right-to-left, double-length)

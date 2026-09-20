@@ -384,6 +384,13 @@ loads; use the narrowest justified domain/local-network exception. Configure TLS
 explicitly for Network.framework. Keep deep trust and SPKI pinning design in
 `swift-security`.
 
+Starting with the 27.0 releases, select system processes — those involved in
+MDM, DDM, Automated Device Enrollment, configuration profile installation, app
+installation, and software updates — enforce stricter TLS requirements. Servers
+must support TLS 1.2 minimum with cipher suites and certificates that meet ATS
+requirements; keep this in mind when diagnosing connectivity failures in
+managed environments on iOS 27.
+
 ## Common Mistakes
 
 **DON'T:** Force-unwrap `URL(string:)` with dynamic input.

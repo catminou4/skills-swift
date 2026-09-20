@@ -309,6 +309,13 @@ xcodebuild -importLocalizations \
     -localizationPath ./Localizations/de.xcloc
 ```
 
+### Xcode 27 additions
+
+- **Agent translation.** The String Catalog editor's Generate Translations button and the per-key context menu ask an Xcode agent to translate strings — from a single feature to an entire project, into one or more languages. The agent can add languages to the project and create missing catalogs, and the "Prepare Project for Localization" tool surfaces newly added keys and keys that were removed from source.
+- **"do not translate" comments.** A localization comment of `do not translate` marks the entry Don't Translate in the catalog and exports `translate="no"` in the XLIFF.
+- **Machine-translation provenance.** Exported XLIFFs mark machine-translated strings with `state-qualifier="leveraged-mt"`.
+- **Header files.** Localization export extracts `NSLocalizedString` and similar macros from header files in addition to implementation files.
+
 ## String Catalog JSON Structure
 
 The `.xcstrings` file is Xcode-managed JSON. Understanding the observed structure can help with parser-backed validation or careful batch updates, but prefer Xcode's editor/export/import workflows for normal localization changes and validate any automated edit before committing.

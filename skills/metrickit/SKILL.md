@@ -144,7 +144,7 @@ Useful fields include:
 
 | Diagnostic | Important fields |
 |---|---|
-| `CrashDiagnostic` | `callStackTree`, exception type/code/reason, signal, virtual-memory region, termination category/reason |
+| `CrashDiagnostic` | `callStackTree`, exception type/code/reason, signal, virtual-memory region, `terminationCategory`, termination reason |
 | `HangDiagnostic` | `callStackTree`, `hangDuration` |
 | `CPUExceptionDiagnostic` | `callStackTree`, `totalCPUTime`, `totalSampledTime` |
 | `DiskWriteExceptionDiagnostic` | `callStackTree`, `totalBytesWritten` |
@@ -153,7 +153,7 @@ Useful fields include:
 
 ## Key Metric Results
 
-Choose a small telemetry vocabulary that matches the investigation rather than exporting every result. Prioritize the relevant categories: responsiveness and terminations; runtime, CPU, memory, network, and storage; or launch, display/GPU, and custom intervals.
+Choose a small telemetry vocabulary that matches the investigation rather than exporting every result. Prioritize the relevant categories: responsiveness and terminations; runtime, CPU, memory, network, and storage; or launch, display/GPU, and custom intervals. iOS 27 additions include the per-`CAMetalLayer` `metalFrameRate` result and `reducedAccuracy` on `LocationActivityTimeMetric`.
 
 Aggregate by app version and environment metadata, compare distributions rather than single values, and correlate regressions with releases. Avoid treating a daily aggregate as a precise trace of one user action.
 
@@ -265,6 +265,7 @@ MetricKit identifies production symptoms and trends. Route the actual code fix t
 | Parsing only known enum cases | Preserve the raw report and use `@unknown default`. |
 | Using `MXMetricManager.makeLogHandle` in the iOS 27 branch | Use `manager.logHandle(category:)`. |
 | Using paired extend/finish launch calls in the iOS 27 branch | Use `trackLaunchTask`. |
+| Referencing `MetricResult.scrollHitchTime` or `ScrollHitchTimeMetric` | Both are removed from the iOS 27 API; use `hitchTime`/`HitchTimeMetric`. Recompile with the 27 SDK — an un-recompiled binary referencing the removed symbols crashes on launch. |
 | Treating MetricKit aggregates as local traces | Reproduce with Instruments and signposts. |
 
 ## Review Checklist

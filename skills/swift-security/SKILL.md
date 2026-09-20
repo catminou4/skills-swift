@@ -177,6 +177,9 @@ fail, or not applicable; for each failure, cite the reference file and severity.
 - Tests cover success, duplicate, missing item, locked-device, simulator/device,
   and migration paths where applicable.
 - OWASP MASVS/MASTG mappings are included when compliance is requested.
+- High-risk targets have evaluated Xcode's Enhanced Security capability against
+  their threat model; on iOS 27 this includes the arm64e.x1 hardware-checked
+  pointer arithmetic slice (CPA2) on A20 Pro/M6/S11-class devices.
 
 ## Common Mistakes
 

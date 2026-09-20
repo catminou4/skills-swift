@@ -1,0 +1,6 @@
+{
+  "name": "skills-swift",
+  "version": "3.9.1",
+  "description": "86 agent skills for iOS 26+/27, Swift 6.3, SwiftUI and modern Apple frameworks (forked from dpearson2699/swift-ios-skills, iOS 27 updated).",
+  "skills": "skills"
+}

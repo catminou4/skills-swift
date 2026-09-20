@@ -11,6 +11,7 @@
 - [Example: adaptive grid](#example-adaptive-grid)
 - [Design choices to keep](#design-choices-to-keep)
 - [iOS 26 Scroll Edge Effects](#ios-26-scroll-edge-effects)
+- [iOS 27 Reordering and Swipe Actions](#ios-27-reordering-and-swipe-actions)
 - [Pitfalls](#pitfalls)
 
 ## Intent
@@ -241,6 +242,50 @@ content
         FilterBar()
     }
 ```
+
+## iOS 27 Reordering and Swipe Actions
+
+Drag-to-reorder is no longer `List`-only on iOS 27. Mark the `ForEach` that generates the views with `.reorderable()` and scope the reordering area by adding `.reorderContainer(for:isEnabled:move:)` to the enclosing list, stack, grid, or custom layout. The `move` closure receives a `ReorderDifference` carrying the moved `sources` and a `destination` position (`.before(id)` or `.end`) to apply to the collection.
+
+```swift
+ScrollView {
+    LazyVStack {
+        ForEach(photos) { photo in
+            PhotoView(photo: photo)
+        }
+        .reorderable()
+    }
+}
+.reorderContainer(for: Photo.self) { difference in
+    move(difference: difference)
+}
+```
+
+For sectioned content built from multiple collections, tag each `ForEach` with `.reorderable(collectionID:)` and use `reorderContainer(for:in:isEnabled:move:)` so the difference identifies the destination collection. Use the `isEnabled` parameter to suspend reordering while syncing or saving. Reordering reaches watchOS for the first time and is unavailable on tvOS.
+
+To let people drag items beyond the container, add `.dragContainer(for:in:_:)` for transfer representations and `dropDestination(for:isEnabled:action:)`; inside the drop action, call `session.reorderDestination(for:)` to resolve where the drop landed relative to existing views.
+
+Swipe actions likewise escape `List` on iOS 27: keep `.swipeActions` on the rows and add `.swipeActionsContainer()` to the `ScrollView`.
+
+```swift
+ScrollView {
+    LazyVStack {
+        ForEach(messages) { message in
+            MessageRow(message: message)
+                .swipeActions {
+                    Button(role: .destructive) { store.delete(message) } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+        }
+    }
+}
+.swipeActionsContainer()
+```
+
+Use `swipeActions(edge:allowsFullSwipe:content:onPresentationChanged:)` (iOS 27+) to react when the actions reveal or dismiss — for example to dim the row or update surrounding chrome.
+
+> **Docs:** [Reordering items in lists, stacks, grids, and custom layouts](https://sosumi.ai/documentation/swiftui/reordering-items-in-lists-stacks-grids-and-custom-layouts) · [swipeActions(edge:allowsFullSwipe:content:onPresentationChanged:)](https://sosumi.ai/documentation/swiftui/view/swipeactions(edge:allowsfullswipe:content:onpresentationchanged:))
 
 ## Pitfalls
 

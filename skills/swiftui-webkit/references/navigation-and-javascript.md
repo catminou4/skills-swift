@@ -2,6 +2,7 @@
 
 ## Contents
 - Navigation policy decisions
+- Form submission callbacks (iOS 27+)
 - Opening external links outside the embedded web view
 - Calling JavaScript
 - Passing arguments into JavaScript
@@ -37,6 +38,25 @@ final class ArticleNavigationDecider: WebPage.NavigationDeciding {
 ```
 
 This keeps app-owned pages embedded while still letting the app hand off external destinations.
+
+## Form submission callbacks (iOS 27+)
+
+`WebPage.NavigationDeciding` gains `willSubmit(formInfo:)` on iOS 27, the
+SwiftUI-side counterpart of the legacy `WKNavigationDelegate` form-submission
+callback. `WebPage.FormInfo` exposes the submitted `formValues`, `httpMethod`,
+`sourceFrame`, `submissionURL`, and `targetFrame`:
+
+```swift
+@MainActor
+final class LoginFormDecider: WebPage.NavigationDeciding {
+    func willSubmit(formInfo: WebPage.FormInfo) async {
+        if formInfo.httpMethod == "POST",
+           formInfo.submissionURL?.path == "/login" {
+            // react to the login form submission
+        }
+    }
+}
+```
 
 ## Opening external links outside the embedded web view
 

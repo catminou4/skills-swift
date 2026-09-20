@@ -213,6 +213,8 @@ struct ProfileForm: View {
 
 Use `@MainActor` for observable types that are owned by SwiftUI views and mutate view-facing state. Keep non-UI domain models isolated according to their concurrency boundary instead of applying `@MainActor` by default.
 
+**Xcode 27 note:** `@State` is now backed by a `State()` macro; class-typed initial values are constructed lazily, once per view lifetime, instead of eagerly at each view init (back-deployed to iOS 17/macOS 14). The ownership pattern above is unchanged.
+
 ### When a New ViewModel Is Justified
 
 The MV pattern is the default. Introduce a ViewModel only when the view would be hard to read or test without one:

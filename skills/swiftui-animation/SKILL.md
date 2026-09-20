@@ -294,6 +294,11 @@ struct GalleryView: View {
 
 Apply `.navigationTransition` on the destination view, not on inner containers.
 
+**iOS 27:** `NavigationTransition.crossFade` fades presented content (sheets,
+pushes) in over the current content instead of sliding. Apply
+`.navigationTransition(.crossFade)` on the presented view; it is unavailable on
+macOS.
+
 ## Transitions (iOS 17+)
 
 Control how views animate on insertion and removal.

@@ -8,6 +8,7 @@
 - [Example: settings-style list](#example-settings-style-list)
 - [Design choices to keep](#design-choices-to-keep)
 - [iOS 26 Scroll Edge Effects](#ios-26-scroll-edge-effects)
+- [iOS 27 Reordering](#ios-27-reordering)
 - [Pitfalls](#pitfalls)
 
 ## Intent
@@ -104,6 +105,10 @@ List {
 ```
 
 See `scrollview.md` for the full scroll edge effect and `backgroundExtensionEffect()` API reference.
+
+## iOS 27 Reordering
+
+`List` supports the same container-agnostic reordering introduced in iOS 27: `.reorderable()` on the `ForEach` and `.reorderContainer(for:isEnabled:move:)` on the `List` itself. Use it for drag-to-reorder designs that should work identically across `List`, stacks, and `LazyVGrid`; `.onMove` remains valid for edit-mode list workflows. See `scrollview.md` for the full reorder and swipe-container pattern, including sectioned collections and drag/drop beyond the container.
 
 ## Pitfalls
 

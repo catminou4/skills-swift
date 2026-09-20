@@ -11,6 +11,7 @@ core APIs and common mistakes.
 - [Gesture Velocity Calculations](#gesture-velocity-calculations)
 - [Long-Press then Drag](#long-press-then-drag-sequenced-gesture-with-state-enum)
 - [SwiftUI + UIKit Gesture Interop](#swiftui--uikit-gesture-interop)
+- [Input Kinds (iOS 27+)](#input-kinds-ios-27)
 - [Accessibility Considerations](#accessibility-considerations)
 
 ## Pinch-to-Zoom with MagnifyGesture
@@ -116,6 +117,11 @@ struct RotateScaleView: View {
 ```
 
 ## Drag-to-Reorder
+
+On iOS 27+, prefer the built-in reorder APIs — `.reorderable()` on `ForEach` plus
+`.reorderContainer(...)` on the enclosing container — for standard
+drag-to-reorder (see `swiftui-layout-components`). Keep this manual pattern for
+pre-iOS 27 targets or non-standard drag interactions.
 
 Drag gesture with haptic feedback for list reordering:
 
@@ -417,6 +423,39 @@ func gestureRecognizer(
     true  // allow both UIKit and SwiftUI gestures to fire
 }
 ```
+
+## Input Kinds (iOS 27+)
+
+`GestureInputKinds` is an option set (iOS 27+) that restricts which input devices
+can trigger a gesture:
+
+- `.all` -- any input (default)
+- `.directTouch` -- touch on the device's display
+- `.indirectTouch` -- trackpad/indirect touch surfaces
+- `.pencil` -- Apple Pencil
+- `.pointer` -- pointer-driven input
+
+All built-in gestures take an `inputKinds:` parameter — `DragGesture`,
+`LongPressGesture`, `MagnifyGesture`, `RotateGesture`, `RotateGesture3D`,
+`SpatialEventGesture`, `SpatialTapGesture`, `TapGesture`, and `WindowDragGesture`
+— as does `onTapGesture(count:coordinateSpace:inputKinds:perform:)`.
+
+```swift
+// Stylus-only canvas stroke: fingers still scroll/zoom the container
+Canvas()
+    .gesture(
+        DragGesture(minimumDistance: 0, inputKinds: .pencil)
+            .onChanged { stroke.append($0.location) }
+    )
+
+// Ignore indirect trackpad input on a photo viewer's double-tap zoom
+Image("photo")
+    .onTapGesture(count: 2, inputKinds: [.directTouch, .pencil]) {
+        toggleZoom()
+    }
+```
+
+> **Docs:** [GestureInputKinds](https://sosumi.ai/documentation/swiftui/gestureinputkinds)
 
 ## Accessibility Considerations
 

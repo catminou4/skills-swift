@@ -15,6 +15,7 @@
 - [Scroll Edge Effect](#scroll-edge-effect)
 - [Background Extension (Split Views)](#background-extension-split-views)
 - [Toolbar Spacing](#toolbar-spacing)
+- [iOS 27 Updates](#ios-27-updates)
 - [Availability Gating](#availability-gating)
 - [Performance Guidelines](#performance-guidelines)
 - [Accessibility Considerations](#accessibility-considerations)
@@ -29,6 +30,11 @@ behind it, reflects color and light from surrounding content, and reacts to touc
 pointer interactions in real time. Standard SwiftUI components (tab bars, toolbars,
 navigation bars, sheets, popovers) adopt Liquid Glass automatically when built with
 the latest SDK.
+
+The 2027 releases (iOS 27, iPadOS 27, macOS 27, and peers) adopt an updated Liquid
+Glass appearance automatically when built with the Xcode 27 SDKs; no code changes
+are required. A system-wide Liquid Glass setting adjusts how much tint glass applies
+across apps -- expect custom tint values to blend with the user's chosen amount.
 
 This reference covers the complete API surface for applying Liquid Glass to custom views.
 
@@ -100,7 +106,7 @@ A structure that defines the configuration of the Liquid Glass material. Conform
 | Method | Description |
 |---|---|
 | `.tint(_ color: Color)` | Returns a copy with a color tint to suggest prominence |
-| `.interactive(_ isInteractive: Bool = true)` | Returns a copy that reacts to touch and pointer interactions |
+| `.interactive(_ isInteractive: Bool = true)` | Returns a copy that reacts to touch and pointer interactions; supported on macOS starting in macOS 27 |
 
 Methods are chainable:
 
@@ -404,6 +410,58 @@ Use `ToolbarSpacer` on iOS 26+ to create a visual break between toolbar items:
 }
 ```
 
+## iOS 27 Updates
+
+### Toolbar overflow and priority
+
+iOS 27 adds explicit control over which toolbar items stay visible as space shrinks.
+Assign `.visibilityPriority(_:)` to `ToolbarItemGroup` content and collect
+low-priority items in a `ToolbarOverflowMenu`, which renders as an overflow control
+when the group collapses. `.topBarPinnedTrailing` is a new placement for items that
+must remain pinned in the trailing top-bar area.
+
+```swift
+.toolbar {
+    ToolbarItemGroup {
+        Button("Action") { }
+            .visibilityPriority(.high)
+    }
+    ToolbarOverflowMenu {
+        Button("Duplicate") { }
+        Button("Archive") { }
+    }
+    ToolbarItem(placement: .topBarPinnedTrailing) {
+        Button("Done") { }
+    }
+}
+```
+
+The navigation bar can also minimize itself on scroll via
+`.toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)` -- see
+`swiftui-navigation`.
+
+### Window active state on iPadOS
+
+On iPadOS 27, windows dim when the user moves focus to another window. Read the
+`\.appearsActive` environment value if custom glass chrome or floating controls
+should mirror that treatment:
+
+```swift
+@Environment(\.appearsActive) private var appearsActive
+
+FloatingToolbar()
+    .opacity(appearsActive ? 1 : 0.6)
+```
+
+`appearsActive` has existed since iOS 18/macOS 10.15, but iPadOS 27 is where
+per-window inactive dimming makes it relevant on that platform.
+
+### Menu bar icons
+
+On iPadOS 27 and macOS 27, menu bar items show minimal icons by default. Apply
+`.labelStyle(.titleAndIcon)` to a `Label` when the item should keep showing its
+symbol.
+
 ## Availability Gating
 
 All Liquid Glass APIs require iOS 26.0+. Always provide a fallback:
@@ -460,3 +518,6 @@ if #available(iOS 26, *) {
 - [GlassEffectTransition](https://sosumi.ai/documentation/swiftui/GlassEffectTransition)
 - [GlassButtonStyle](https://sosumi.ai/documentation/swiftui/GlassButtonStyle)
 - [GlassProminentButtonStyle](https://sosumi.ai/documentation/swiftui/GlassProminentButtonStyle)
+- [ToolbarOverflowMenu](https://sosumi.ai/documentation/swiftui/toolbaroverflowmenu)
+- [EnvironmentValues.appearsActive](https://sosumi.ai/documentation/swiftui/environmentvalues/appearsactive)
+- [SwiftUI updates](https://sosumi.ai/documentation/updates/swiftui)

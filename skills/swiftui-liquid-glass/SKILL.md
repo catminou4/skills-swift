@@ -1,6 +1,6 @@
 ---
 name: swiftui-liquid-glass
-description: "Implement, review, or improve SwiftUI Liquid Glass effects for iOS 26+. Covers glassEffect modifier, GlassEffectContainer, glass button styles, glass toolbar/tab bar, static status badges vs interactive controls, morphing transitions, tinting, interactive glass, ToolbarSpacer, scrollEdgeEffectStyle, backgroundExtensionEffect, and availability gating. Use when asked about Liquid Glass, glass buttons, glassEffect, GlassEffectTransition, glassEffectID, glassEffectUnion, scroll edge effects, or adopting iOS 26 design."
+description: "Implement, review, or improve SwiftUI Liquid Glass effects for iOS 26+. Covers glassEffect modifier, GlassEffectContainer, glass button styles, glass toolbar/tab bar, static status badges vs interactive controls, morphing transitions, tinting, interactive glass, ToolbarSpacer, scrollEdgeEffectStyle, backgroundExtensionEffect, iOS 27 refreshed appearance and toolbar overflow APIs, and availability gating. Use when asked about Liquid Glass, glass buttons, glassEffect, GlassEffectTransition, glassEffectID, glassEffectUnion, scroll edge effects, or adopting iOS 26 design."
 ---
 
 # SwiftUI Liquid Glass
@@ -9,6 +9,10 @@ Liquid Glass is the dynamic translucent material introduced across Apple platfor
 26. Standard SwiftUI bars and presentations adopt it automatically when built with
 the current SDK. Reserve custom glass for functional controls and navigation surfaces,
 not general content backgrounds.
+
+The 2027 releases adopt an updated Liquid Glass appearance automatically when built
+with the Xcode 27 SDKs -- no code changes required. A system-wide Liquid Glass
+setting also lets people adjust how much tint glass applies across apps.
 
 See [references/liquid-glass.md](references/liquid-glass.md) for the full API reference with additional examples.
 
@@ -120,6 +124,19 @@ Button("Media") { }
 | `scrollEdgeEffectStyle` | Configure a scroll boundary's visual treatment. |
 | `backgroundExtensionEffect` | Extend one background under safe-area edges with mirrored blur. |
 | `ToolbarSpacer` | Create a visual break between toolbar items. |
+
+### iOS 27 additions
+
+- Updated Liquid Glass appearance adopted automatically by apps built with the
+  Xcode 27 SDKs; system slider adjusts glass tinting.
+- `Glass.interactive()` is now supported on macOS (macOS 27+).
+- iPadOS 27 windows dim when inactive -- read `\.appearsActive` if custom glass
+  chrome must respond to window focus.
+- iPadOS/macOS menu bars show minimal icons by default; `.labelStyle(.titleAndIcon)`
+  opts an item into showing its icon.
+- Toolbar additions: `.visibilityPriority(_:)` on `ToolbarItemGroup`,
+  `ToolbarOverflowMenu { }` for collapsing overflow, and `.topBarPinnedTrailing`
+  placement.
 
 See the corresponding sections in
 [references/liquid-glass.md](references/liquid-glass.md) for signatures and examples.
@@ -290,6 +307,7 @@ VStack(spacing: 8) {
 - [ ] **Button styles**: Standard `.glass`, `.glassProminent`, or configurable `.glass(_:)` used for buttons; `.glass(_:)` is primary when a tint or clear variant is required.
 - [ ] **Clear glass contrast**: Clear glass over bright content has a dimming/contrast treatment or uses a more legible style.
 - [ ] **Concurrency**: IDs passed to `glassEffectID` / `glassEffectUnion` are `Sendable`; MainActor-annotated Liquid Glass APIs stay in SwiftUI UI code.
+- [ ] **iOS 27 chrome**: Dense toolbars use `ToolbarOverflowMenu` / `.visibilityPriority` instead of overflowing; custom window chrome reads `\.appearsActive` for iPadOS 27 inactive-window dimming.
 
 ## References
 

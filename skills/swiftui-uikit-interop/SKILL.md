@@ -1,6 +1,6 @@
 ---
 name: swiftui-uikit-interop
-description: "Bridges UIKit and SwiftUI with UIViewRepresentable, UIViewControllerRepresentable, UIHostingController, UIHostingConfiguration, coordinator delegates, and UIKit automatic observation tracking for shared @Observable state. Use when wrapping UIKit-only or third-party UIKit views/controllers in SwiftUI, embedding SwiftUI in UIKit, integrating mail/share/document/PDF/text-view surfaces, or migrating UIKit apps to SwiftUI incrementally."
+description: "Bridges UIKit and SwiftUI with UIViewRepresentable, UIViewControllerRepresentable, UIHostingController, UIHostingConfiguration, coordinator delegates, and UIKit automatic observation tracking for shared @Observable state. Use when wrapping UIKit-only or third-party UIKit views/controllers in SwiftUI, embedding SwiftUI in UIKit, integrating mail/share/document/PDF/text-view surfaces, migrating UIKit apps to SwiftUI incrementally, or meeting the iOS 27 scene-based lifecycle requirement."
 ---
 
 # SwiftUI-UIKit Interop
@@ -365,6 +365,7 @@ Without the guard, setting `uiView.text` may trigger the delegate's `textViewDid
 For UIKit screens that share an `@Observable` model with SwiftUI, keep the screen UIKit and read observed state from UIKit's tracked update hooks:
 
 - iOS 26+: use `updateProperties()` for labels, colors, visibility, enabled state, and other non-layout UI; use layout hooks for geometry; use cell configuration update handlers for cells.
+- iOS 27+: `UICollectionViewCompositionalLayoutSectionProvider` closures also participate in automatic observation tracking.
 - iOS 18: automatic UIKit tracking requires `UIObservationTrackingEnabled` in `Info.plist`.
 - iOS 17: `@Observable` exists, but UIKit automatic observation tracking is not available. Manual `withObservationTracking` is one-shot; do not build polling loops around it.
 - iOS 15-16 or existing `ObservableObject`: use Combine `objectWillChange`, delegates, notifications, or explicit callbacks.
@@ -398,6 +399,7 @@ If passing closures across isolation boundaries, ensure they are `@Sendable` or 
 | Hosting controller uses manual frame without containment | Use Auto Layout and `addChild`/`didMove(toParent:)`. |
 | `@State` used inside a coordinator | Use stored properties and communicate through bindings/callbacks. |
 | `withObservationTracking` is polled manually | Use UIKit automatic observation hooks where available or explicit invalidation on older targets. |
+| App-delegate-only lifecycle on an iOS 27 SDK build | Apps must use the scene-based life cycle or they fail to launch -- move window management to `UISceneDelegate`/`UIWindowSceneDelegate`. |
 
 ## Review Checklist
 

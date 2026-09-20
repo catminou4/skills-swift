@@ -11,6 +11,7 @@
 - [Example: sheets that need their own navigation](#example-sheets-that-need-their-own-navigation)
 - [Design choices to keep](#design-choices-to-keep)
 - [iOS 26 Presentation Sizing](#ios-26-presentation-sizing)
+- [iOS 27 Item-Bound Alerts and Transitions](#ios-27-item-bound-alerts-and-transitions)
 - [Pitfalls](#pitfalls)
 
 ## Intent
@@ -172,6 +173,47 @@ On macOS 15+, show a confirmation dialog when the user tries to dismiss a sheet 
 - For `dismissalConfirmationDialog`, the Cancel action is included automatically and prevents dismissal.
 - All other action buttons allow dismissal to proceed.
 - Use `.keyboardShortcut(.defaultAction)` to set the default button
+
+## iOS 27 Item-Bound Alerts and Transitions
+
+### Item-bound alerts and confirmation dialogs
+
+iOS 27 adds `item:` overloads for alerts and confirmation dialogs, giving them the
+same binding semantics as `sheet(item:)`: the presentation appears when the bound
+value becomes non-nil and the system resets it to nil on dismissal.
+
+```swift
+@State private var conflict: SyncConflict?
+
+Content()
+    .alert("Sync Conflict", item: $conflict) { conflict in
+        Button("Keep Mine") { resolve(conflict, keep: .local) }
+        Button("Keep Server") { resolve(conflict, keep: .remote) }
+        Button("Cancel", role: .cancel) { }
+    }
+```
+
+New overloads (iOS 27+):
+
+- `alert(_:item:actions:)` / `alert(_:item:actions:message:)`
+- `alert(error:actions:)` / `alert(error:actions:message:)` -- bind an optional
+  `LocalizedError`; presents while non-nil
+- `confirmationDialog(_:item:titleVisibility:actions:)` /
+  `confirmationDialog(_:item:titleVisibility:actions:message:)`
+
+### Sheet cross-fade transition
+
+Apply `NavigationTransition.crossFade` (iOS 27+) to sheet content so the sheet
+fades in over the presenting content instead of sliding:
+
+```swift
+.sheet(isPresented: $showSettings) {
+    SettingsView()
+        .navigationTransition(.crossFade)
+}
+```
+
+`crossFade` is unavailable on macOS; gate it if the sheet also runs on Mac.
 
 ## Pitfalls
 

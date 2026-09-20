@@ -105,6 +105,8 @@ Provide:
 
 Use the **SwiftUI template** in Instruments (Cmd+I to profile). Current SwiftUI lanes include Update Groups, Long View Body Updates, Long Representable Updates / Representable Updates, Other Long Updates / Other Updates, and the Cause & Effect Graph. Correlate those with Time Profiler and Hangs/Hitches.
 
+**Instruments 27:** new **Swift Executors** instrument visualizes Main Actor, global, and custom executor contention; **Top Functions** mode aggregates samples by function; **Run Comparisons** lets you diff two captured runs; the new **Inspector** panel adds a syscalls view.
+
 Add `Self._printChanges()` in debug builds to log which property triggered a view update:
 
 ```swift
@@ -176,6 +178,12 @@ Cheap computed values can remain derived; expensive transformations need an
 explicit owner, input set, and refresh trigger. Do not add view models as a
 performance ritual—measure first and route general state design to
 `swiftui-patterns`.
+
+Xcode 27 makes `@State` a `State()` macro: class-typed initial values are
+constructed lazily once per view lifetime rather than eagerly per view init
+(back-deployed to iOS 17/macOS 14), removing the eager-construction cost from
+owned `@Observable` models. Xcode 27 also exposes `ViewBuilder` as the unified
+`ContentBuilder`, which improves build times on large view hierarchies.
 
 ## Common Mistakes
 

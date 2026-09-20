@@ -148,6 +148,12 @@ A fallback `WKWebView` path can still make sense when:
 When you keep `WKWebView`, treat it as a deliberate fallback, not the default
 architecture for a modern iOS 26+ SwiftUI feature.
 
+On iOS 27, `WKWebView` itself gains `load(_ url:)`, `WKHTTPCookieStore.cookies(for:)`,
+`WKJSHandle`/`WKContentWorldConfiguration` for script isolation,
+`WKDOMNodeSnapshot`, `mainFrameNavigation` on navigation actions and responses,
+and `globalPrivacyControlEnabled`. These keep the fallback capable but do not
+change the migration default.
+
 ## Testing the migration
 
 For each migrated screen, verify:

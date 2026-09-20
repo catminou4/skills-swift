@@ -12,6 +12,7 @@ Patterns for incrementally migrating a UIKit app to SwiftUI. Each pattern is sel
 - [4. Data Sharing Between UIKit and SwiftUI](#4-data-sharing-between-uikit-and-swiftui)
 - [5. UIHostingConfiguration (iOS 16+)](#5-uihostingconfiguration-ios-16)
 - [6. Environment Bridging](#6-environment-bridging)
+- [7. iOS 27 Requirements](#7-ios-27-requirements)
 
 ## 1. Screen-by-Screen Migration
 
@@ -527,3 +528,37 @@ state.currentRole = .admin
 - **`@Environment(\.dismiss)` in hosted views.** This works for SwiftUI presentations and navigation contexts. For a `UIHostingController` pushed by UIKit, pass an explicit callback that calls `popViewController(animated:)`; the pushed controller is not inside a SwiftUI `NavigationStack`.
 - **Missing environment.** If a SwiftUI view expects an `@Environment` object and it is not provided, the app crashes at runtime. Always set required environment values before creating the hosting controller.
 - **Overriding traits.** Use `hostingVC.overrideUserInterfaceStyle` to force light/dark mode for a hosted SwiftUI view. This propagates to `\.colorScheme` automatically.
+
+---
+
+## 7. iOS 27 Requirements
+
+### Scene-Based Life Cycle Is Mandatory
+
+Starting in iOS 27, apps built with the latest SDK must use the scene-based
+life cycle or they fail to launch. Any remaining `UIApplicationDelegate`-driven
+window management (`window` property, interface setup in
+`application(_:didFinishLaunchingWithOptions:)`) must move to
+`UISceneDelegate`/`UIWindowSceneDelegate` -- or a SwiftUI `Scene` -- before
+building with the iOS 27 SDK. Hosting and representable patterns in this
+document are unaffected; the requirement is on the app's entry point.
+
+### Compositional Layout Observation Tracking
+
+On iOS 27, `UICollectionViewCompositionalLayoutSectionProvider` closures
+participate in UIKit's automatic observation tracking, so sections built from
+`@Observable` state update when that state changes -- the same tracking rules
+as `updateProperties()` in section 4.
+
+### iPhone Resizability
+
+iPhone apps become resizable on iOS 27 (iPhone Mirroring, iPhone apps running
+on iPad). Hybrid UIKit code must:
+
+- gate layout on size classes (`traitCollection.horizontalSizeClass`), never
+  `UIDevice.userInterfaceIdiom`
+- resolve geometry through the window/scene rather than `UIScreen.main`
+  assumptions
+- handle orientation changes without fixed-size assumptions
+
+> **Docs:** [UIKit updates](https://sosumi.ai/documentation/updates/uikit)

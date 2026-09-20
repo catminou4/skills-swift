@@ -151,6 +151,8 @@ struct DeepView: View {
 
 **Granular tracking:** SwiftUI only re-renders views that read properties that changed. If a view reads `items` but not `isLoading`, changing `isLoading` does not trigger a re-render. This is a major performance advantage over `ObservableObject`.
 
+**Xcode 27:** `@State` is now backed by a `State()` macro -- class-typed initial values are constructed lazily, once per view lifetime, instead of eagerly at each view init. Back-deployed to iOS 17/macOS 14. The ownership pattern above is unchanged; it just no longer pays the eager-construction cost.
+
 ### Legacy ObservableObject
 
 Only use if supporting iOS 16 or earlier. `@StateObject` → `@State`, `@ObservedObject` → `let`, `@EnvironmentObject` → `@Environment(Type.self)`.
@@ -300,6 +302,8 @@ Use `swift-concurrency` for cancellation handlers, debounce and clocks, `AsyncSe
 Route `.scrollEdgeEffectStyle`, `.backgroundExtensionEffect`, and glass controls to `swiftui-liquid-glass`; route `@Animatable` to `swiftui-animation`. `TextEditor(text: Binding<AttributedString>)` is the iOS 26 rich-text editing path. Keep availability checks beside code that adopts these APIs.
 
 Clipboard command modifiers are not iOS 26 defaults: `.copyable`, `.cuttable`, and command-based `.pasteDestination(for:action:validator:)` are macOS 13+ and iOS/iPadOS/Mac Catalyst 27 beta in current Apple docs. For iOS 26 targets, use `UIPasteboard` for custom clipboard commands, or use drag/drop and `ShareLink` for `Transferable` flows. See [references/platform-and-sharing.md](references/platform-and-sharing.md).
+
+**iOS 27/Xcode 27:** `ContentBuilder` is the unified result builder that `ViewBuilder` now exposes (also replacing `ToolbarContentBuilder`/`CommandsBuilder`); `@ViewBuilder` remains valid in existing code. `AsyncImage` caches HTTP responses by default, adds `init(request:scale:)`-style initializers taking a `URLRequest`, and supports `.asyncImageURLSession(_:)` for a custom session/cache.
 
 ## Performance Guidelines
 

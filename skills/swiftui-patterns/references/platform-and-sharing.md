@@ -248,7 +248,7 @@ Use consistent patterns for loading images, previewing media, and presenting a f
 
 ### Core patterns
 
-- Use `AsyncImage` for simple remote images. `LazyImage` is from the third-party Nuke library if you need advanced caching and prefetching.
+- Use `AsyncImage` for simple remote images. On iOS 27+, `AsyncImage` caches HTTP responses by default and adds `init(request:scale:)` variants taking a `URLRequest` (headers, auth); `.asyncImageURLSession(_:)` scopes a custom `URLSession`/`URLCache`. `LazyImage` is from the third-party Nuke library if you need prefetching beyond HTTP caching.
 - Prefer a lightweight preview component for inline media.
 - Use a shared viewer state (e.g., `QuickLook`) to present a full-screen media viewer.
 - Use `openWindow` for desktop/visionOS and a sheet for iOS.

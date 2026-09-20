@@ -9,6 +9,7 @@
 - [Design choices to keep](#design-choices-to-keep)
 - [Dynamic tabs pattern](#dynamic-tabs-pattern)
 - [iOS 26 Tab API](#ios-26-tab-api)
+- [iOS 27 Tab Additions](#ios-27-tab-additions)
 - [Pitfalls](#pitfalls)
 
 ## Intent
@@ -173,6 +174,24 @@ TabView {
 }
 .tabViewBottomAccessory { NowPlayingBar() }
 ```
+
+## iOS 27 Tab Additions
+
+### Prominent tab role
+
+`Tab(role: .prominent)` (iOS 27+) marks a tab as a prominent trailing-position tab
+in the tab bar -- the system renders it with elevated visual weight alongside the
+regular tabs:
+
+```swift
+TabView(selection: $selectedTab) {
+    Tab(value: AppTab.home) { HomeView() }
+    Tab(value: AppTab.create, role: .prominent) { CreateView() }
+}
+```
+
+Use it for a single high-emphasis destination; keep `.search` for the dedicated
+search tab.
 
 ## Pitfalls
 

@@ -92,6 +92,8 @@ usage-detail entry.
 | User activity | `.sleepSessions` | `SRSleepSession` |
 | User activity | `.photoplethysmogram` | `[SRPhotoplethysmogramSample]` |
 | User activity | `.electrocardiogram` | `[SRElectrocardiogramSample]` |
+| User activity | `.headphoneMotion` (iOS 27+) | `[CMRecordedDeviceMotion]` |
+| User activity | `.headphoneSettings` (iOS 27+) | `SRHeadphoneSettings` |
 | Environment | `.ambientLightSensor` | `SRAmbientLightSample` |
 | Environment | `.ambientPressure` | `[CMRecordedPressureData]` |
 

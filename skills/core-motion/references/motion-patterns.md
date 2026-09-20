@@ -175,6 +175,16 @@ let reportedHz = batchedManager.accelerometerDataFrequency
 not assign them; use the reported values to size buffers, throttle UI updates, or
 downsample processed results.
 
+### Recorded Device Motion (iOS 27+)
+
+`CMRecordedDeviceMotion` (iOS 27+, watchOS 27+, macOS 27+, visionOS 27+) is a
+`CMDeviceMotion` subclass for historical device motion recorded for later
+retrieval, including data from accessories such as headphones. Each sample
+carries a monotonically increasing `identifier` usable as an anchor for future
+queries, plus the `startDate` the sample was observed. SensorKit's
+`SRSensor.headphoneMotion` stream (iOS 27+) returns `CMRecordedDeviceMotion`
+arrays.
+
 ## Headphone Motion
 
 Track head motion using AirPods Pro / AirPods Max via `CMHeadphoneMotionManager`.

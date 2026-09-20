@@ -1,6 +1,6 @@
 ---
 name: realitykit
-description: "Build iOS augmented reality and 3D experiences with RealityKit and ARKit. Use when adding RealityView content, loading entities or USDZ models, anchoring objects to planes or world positions, distinguishing entity hit tests from ARKit real-world raycasts, handling AR camera availability, world tracking, scene updates, or RealityKit entity gestures and interactions."
+description: "Build iOS augmented reality and 3D experiences with RealityKit and ARKit. Use when adding RealityView content, loading entities or USDZ models, anchoring objects to planes or world positions, distinguishing entity hit tests from ARKit real-world raycasts, handling AR camera availability, world tracking, scene updates, or RealityKit entity gestures and interactions. iOS 27 adds lightmaps, soft spot-light shadows, navigation meshes, cloth simulation, reverb meshes, and Gaussian splats."
 ---
 
 # RealityKit
@@ -18,6 +18,7 @@ understanding, and gesture-based interactions. Targets Swift 6.3 / iOS 26+.
 - [Raycasting](#raycasting)
 - [Gestures and Interaction](#gestures-and-interaction)
 - [Scene Understanding](#scene-understanding)
+- [iOS 27 Additions](#ios-27-additions)
 - [Common Mistakes](#common-mistakes)
 - [Review Checklist](#review-checklist)
 - [References](#references)
@@ -293,6 +294,31 @@ detailed SwiftUI gestures and VoiceOver/Switch Control policy belong to siblings
 Treat existing `SCNView`/`SCNNode` work as either a separate SceneKit path or an
 explicit migration to RealityKit, not a mixed scene graph.
 
+## iOS 27 Additions
+
+New iOS 27 capabilities, grouped by area:
+
+- **Lighting.** `LightmapComponent` applies precomputed indirect, AO, or beauty
+  lightmaps to entities. `SpotLightComponent.Shadow.lightSize` (meters; `0` =
+  hard shadows) softens shadows, but only takes effect when `quality` is
+  `.medium` or `.high`. `SpotLightComponent.ProjectiveTexture` projects a
+  texture from the light. `SpotLightComponent.SurroundingsLight` lights virtual
+  content from the physical room's surroundings — visionOS and macOS only, not
+  iOS.
+- **Navigation.** `NavigationMeshResource`, `NavigationComponent`, and
+  `NavigationController` bake navmeshes from walkable surfaces and drive entity
+  navigation across them (all platforms).
+- **Cloth.** `ClothBodyComponent` and `ClothColliderComponent` simulate cloth —
+  iOS, iPadOS, and visionOS only.
+- **Audio.** `ReverbMeshResource` builds acoustic reverb geometry for spatial
+  audio on all platforms.
+- **Gaussian splats.** `GaussianSplatResource` and `GaussianSplatComponent` are
+  documented for iOS 27, but the iOS 27 SDK release notes list splat rendering
+  as arriving in a later release — gate usage behind a runtime check.
+
+See [iOS 27 Additions](references/realitykit-patterns.md#ios-27-additions) for
+setup snippets.
+
 ## Common Mistakes
 
 ### DON'T: Skip AR capability checks
@@ -426,6 +452,14 @@ struct ARContainerView: View {
 - [ARKit in iOS](https://sosumi.ai/documentation/arkit/arkit-in-ios)
 - [Verifying Device Support and User Permission](https://sosumi.ai/documentation/arkit/verifying-device-support-and-user-permission)
 - [ARWorldTrackingConfiguration](https://sosumi.ai/documentation/arkit/arworldtrackingconfiguration)
+- [LightmapComponent](https://sosumi.ai/documentation/realitykit/lightmapcomponent)
+- [SpotLightComponent.Shadow.lightSize](https://sosumi.ai/documentation/realitykit/spotlightcomponent/shadow/lightsize)
+- [NavigationMeshResource](https://sosumi.ai/documentation/realitykit/navigationmeshresource)
+- [NavigationComponent](https://sosumi.ai/documentation/realitykit/navigationcomponent)
+- [NavigationController](https://sosumi.ai/documentation/realitykit/navigationcontroller)
+- [ClothBodyComponent](https://sosumi.ai/documentation/realitykit/clothbodycomponent)
+- [ReverbMeshResource](https://sosumi.ai/documentation/realitykit/reverbmeshresource)
+- [GaussianSplatComponent](https://sosumi.ai/documentation/realitykit/gaussiansplatcomponent)
 - [ARRaycastQuery](https://sosumi.ai/documentation/arkit/arraycastquery)
 - [ARSession.raycast(_:)](https://sosumi.ai/documentation/arkit/arsession/raycast(_:))
 - [Loading entities from a file](https://sosumi.ai/documentation/realitykit/loading-entities-from-a-file)

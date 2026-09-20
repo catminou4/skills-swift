@@ -1,6 +1,6 @@
 ---
 name: core-bluetooth
-description: "Build direct Bluetooth Low Energy workflows with Core Bluetooth. Use when implementing BLE central or peripheral GATT communication, scanning or connecting with CBCentralManager, discovering services and characteristics, reading/writing/subscribing with CBPeripheral, publishing local services with CBPeripheralManager, handling Bluetooth authorization, background BLE modes, state restoration, write flow control, or CBUUID-based workflows. For privacy-preserving accessory setup/picker flows, use accessorysetupkit first and return here for post-setup GATT communication."
+description: "Build direct Bluetooth Low Energy workflows with Core Bluetooth. Use when implementing BLE central or peripheral GATT communication, scanning or connecting with CBCentralManager, discovering services and characteristics, reading/writing/subscribing with CBPeripheral, publishing local services with CBPeripheralManager, handling Bluetooth authorization, background BLE modes, state restoration, write flow control, iOS 27+ Bluetooth Channel Sounding distance ranging to paired accessories, or CBUUID-based workflows. For privacy-preserving accessory setup/picker flows, use accessorysetupkit first and return here for post-setup GATT communication."
 ---
 
 # Core Bluetooth
@@ -21,6 +21,7 @@ use this skill for direct Core Bluetooth GATT communication.
 - [Peripheral Role: Advertising](#peripheral-role-advertising)
 - [Background BLE](#background-ble)
 - [State Restoration](#state-restoration)
+- [Channel Sounding (iOS 27+)](#channel-sounding-ios-27)
 - [Common Mistakes](#common-mistakes)
 - [Review Checklist](#review-checklist)
 - [References](#references)
@@ -377,6 +378,41 @@ func peripheralManager(
 }
 ```
 
+## Channel Sounding (iOS 27)
+
+Channel Sounding measures the physical distance to a Bluetooth 6.3 peripheral.
+The system restricts Channel Sounding sessions to peripherals paired through
+AccessorySetupKit; it denies `startChannelSoundingSession(_:)` for peripherals
+paired any other way.
+
+```swift
+// Check support only after the central manager reaches .poweredOn
+guard CBCentralManager.supports(.channelSounding) else { return }
+
+let config = CBChannelSoundingSessionConfiguration(role: .initiator)
+peripheral.startChannelSoundingSession(config)
+
+// Distance estimates arrive on the peripheral delegate
+func peripheral(_ peripheral: CBPeripheral,
+                didReceive results: CBChannelSoundingProcedureResults?,
+                error: Error?) {
+    if let distance = results?.distance, distance >= 0 {
+        // Measured distance in meters; negative means no valid reading
+    }
+}
+
+func peripheral(_ peripheral: CBPeripheral,
+                didCompleteChannelSoundingSession error: Error?) { }
+
+// End the session
+peripheral.cancelChannelSoundingSession()
+```
+
+Session failures surface `CBError.channelSoundingConfigurationFailed` and
+`.channelSoundingProcedureFailed`. A Channel Sounding-capable peripheral can
+also be ranged through Nearby Interaction when
+`NISession.deviceCapabilities.supportsBluetoothChannelSounding` is true.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -418,6 +454,10 @@ func peripheralManager(
 - [CBPeripheralDelegate](https://sosumi.ai/documentation/corebluetooth/cbperipheraldelegate)
 - [NSBluetoothAlwaysUsageDescription](https://sosumi.ai/documentation/bundleresources/information-property-list/nsbluetoothalwaysusagedescription)
 - [CBManagerAuthorization](https://sosumi.ai/documentation/corebluetooth/cbmanagerauthorization)
+- [Measuring distance between devices using Channel Sounding](https://sosumi.ai/documentation/corebluetooth/measuring-distance-between-devices-using-channel-sounding)
+- [CBChannelSoundingSessionConfiguration](https://sosumi.ai/documentation/corebluetooth/cbchannelsoundingsessionconfiguration)
+- [CBChannelSoundingProcedureResults](https://sosumi.ai/documentation/corebluetooth/cbchannelsoundingprocedureresults)
+- [CBCentralManager.Feature.channelSounding](https://sosumi.ai/documentation/corebluetooth/cbcentralmanager/feature/channelsounding)
 - [scanForPeripherals(withServices:options:)](https://sosumi.ai/documentation/corebluetooth/cbcentralmanager/scanforperipherals(withservices:options:))
 - [startAdvertising(_:)](https://sosumi.ai/documentation/corebluetooth/cbperipheralmanager/startadvertising(_:))
 - [writeValue(_:for:type:)](https://sosumi.ai/documentation/corebluetooth/cbperipheral/writevalue(_:for:type:))

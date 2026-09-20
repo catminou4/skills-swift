@@ -15,6 +15,7 @@ Extended patterns, data persistence strategies, rendering, multi-platform consid
 - [Full macOS Setup with Toolbar](#full-macos-setup-with-toolbar)
 - [Custom FeatureSet Patterns](#custom-featureset-patterns)
 - [Programmatic Markup Construction](#programmatic-markup-construction)
+- [Data Model Elements and Adornments (iOS 27+)](#data-model-elements-and-adornments-ios-27)
 - [Content Transformation](#content-transformation)
 - [PencilKit Migration](#pencilkit-migration)
 - [Error Handling](#error-handling)
@@ -538,6 +539,92 @@ func createAnnotatedTemplate(size: CGSize) -> PaperMarkup {
 var combined = PaperMarkup(bounds: totalBounds)
 combined.append(contentsOf: page1Markup)
 combined.append(contentsOf: page2Markup)
+```
+
+## Data Model Elements and Adornments (iOS 27+)
+
+iOS 27 opens the `PaperMarkup` data model for programmatic access and mutation.
+
+### Reading Elements
+
+`subelements` is a `MarkupOrderedSet` — an ordered, mutable collection of every element on the canvas. Iterate `ids` and switch on `MarkupOrderedSet.ElementID` to reach the concrete type:
+
+```swift
+for elementID in markup.subelements.ids {
+    switch elementID {
+    case .shape(let id):
+        let shape = markup.subelements[id]          // ShapeMarkup?
+    case .image(let id):
+        let image = markup.subelements[id]          // ImageMarkup?
+    case .link(let id):
+        let link = markup.subelements[id]           // LinkMarkup?
+    case .loupe(let id):
+        let loupe = markup.subelements[id]          // LoupeMarkup?
+    case .stroke(let uuid):
+        let stroke = markup.subelements[uuid]       // PKStroke?
+    }
+}
+```
+
+### Locking Template Elements
+
+Every element conforms to `Markup`, which exposes `allowedInteractions` — a `MarkupInteractions` option set controlling `.move`, `.resize`, `.rotate`, `.delete`, `.style`, and `.select` per element. `.readOnly` combines all restrictions. Mutate the copy, then write it back to the set and reassign `markup` on the controller.
+
+```swift
+func lockTemplateElements(_ markup: inout PaperMarkup) {
+    for elementID in markup.subelements.ids {
+        if case .shape(let id) = elementID, var shape = markup.subelements[id] {
+            shape.allowedInteractions = .readOnly
+            markup.subelements.updateOrAppend(shape)
+        }
+    }
+}
+```
+
+### Styling Elements
+
+Concrete element types carry their own properties — `ShapeMarkup` exposes `fillColor`, `strokeColor`, `lineWidth`, `opacity`, and `attributedText`; `ImageMarkup` exposes `image`, `opacity`, and `replaceImage(with:)`:
+
+```swift
+for elementID in markup.subelements.ids {
+    if case .shape(let id) = elementID, var shape = markup.subelements[id] {
+        shape.strokeColor = UIColor.systemBlue.cgColor
+        shape.fillColor = UIColor.systemBlue.withAlphaComponent(0.2).cgColor
+        markup.subelements.updateOrAppend(shape)
+    }
+}
+markup.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.05).cgColor
+paperVC.markup = markup
+```
+
+### Adornments
+
+`MarkupAdornment` is a visual overlay anchored to canvas coordinates. Adornments track zoom and scroll, are not saved in `dataRepresentation()`, and are excluded from printing and export — use them for edit-mode controls, annotations, or collaboration UI.
+
+```swift
+let adornment = MarkupAdornment(
+    anchor: .canvas(location: CGPoint(x: 306, y: 396)),
+    imageConfiguration: .systemImage("photo.artframe")
+)
+paperVC.adornments = [adornment]
+
+// PaperMarkupViewController.Delegate
+func paperMarkupViewController(
+    _ controller: PaperMarkupViewController,
+    didTapAdornmentWithID id: UUID
+) {
+    presentCreationUI(for: id)
+}
+```
+
+Adornment anchors can update as the user interacts; implement `paperMarkupViewController(_:willUpdateAdornmentWithID:toProposedAnchor:)` to constrain movement and `paperMarkupViewController(_:didUpdateAdornmentWithID:toAnchor:)` to observe moves. Query the current canvas position with `adornmentFrame(for:)`.
+
+### Selection
+
+```swift
+paperVC.selection                 // Set<MarkupOrderedSet.ElementID>
+paperVC.selectedMarkup            // PaperMarkup containing the selection
+paperVC.suggestedFrameForInserting(contentInFrame: rect)
 ```
 
 ## Content Transformation

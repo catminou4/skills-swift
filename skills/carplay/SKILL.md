@@ -1,6 +1,6 @@
 ---
 name: carplay
-description: "Build CarPlay-enabled apps using the CarPlay framework. Use when creating navigation, audio, communication, EV charging, parking, or food ordering apps for the car display, working with CPTemplateApplicationScene, CPInterfaceController template hierarchies, CPListTemplate, CPMapTemplate, CPNowPlayingTemplate, configuring CarPlay entitlements, or integrating with CarPlay Simulator for testing."
+description: "Build CarPlay-enabled apps using the CarPlay framework. Use when creating navigation, audio, communication, EV charging, parking, food ordering, or video apps for the car display, working with CPTemplateApplicationScene, CPInterfaceController template hierarchies, CPListTemplate, CPMapTemplate, CPNowPlayingTemplate, configuring CarPlay entitlements, or integrating with CarPlay Simulator for testing."
 ---
 
 # CarPlay
@@ -48,6 +48,15 @@ accept the addendum, then provision the approved category key below.
 | `com.apple.developer.carplay-charging` | EV Charging |
 | `com.apple.developer.carplay-parking` | Parking |
 | `com.apple.developer.carplay-quick-ordering` | Quick Food Ordering |
+
+iOS 27 adds a Video category: apps that combine a CarPlay video entitlement
+(requested from Apple) with the audio entitlement appear only on cars that
+support video-in-car, and stream video to the vehicle display over AirPlay.
+Video apps set `CPSessionConfiguration.supportsVideoPlayback` (iOS 26.4+)
+and present playback items with `CPPlaybackConfiguration` `.video`
+presentation; `CPPlayableItem`, `CPThumbnailImage`, `CPImageOverlay`,
+`CPSportsOverlay`, and `CPListTemplateDetailsHeader` (iOS 26.4+) model the
+playable content.
 
 ### Project Configuration
 
@@ -173,6 +182,13 @@ the system renders it on the vehicle display.
 | `CPNowPlayingTemplate` | Audio -- shared Now Playing screen |
 | `CPPointOfInterestTemplate` | EV Charging / Parking / Food -- POI map |
 | `CPContactTemplate` | Communication -- contact card |
+| `CPVoiceControlTemplate` | Voice-driven UI -- Communication before iOS 27; all categories iOS 27+ |
+
+iOS 27 opens `CPVoiceControlTemplate` to every CarPlay category. It supports
+up to two action buttons plus navigation bar buttons, and apps can present
+it as an overlay with `showOverlayTemplate`/`hideOverlayTemplate` (iOS 27+)
+using shorter text variants. URLs from the conversation open through
+`CPTemplateApplicationScene`.
 
 ### Navigation Hierarchy
 
@@ -258,6 +274,26 @@ zoomIn.image = UIImage(systemName: "plus.magnifyingglass")
 mapTemplate.mapButtons = [zoomIn, zoomOut]
 ```
 
+### Map Panels and Route Sharing (iOS 27+)
+
+`CPMapPanel` (iOS 27+) is a secondary content panel on the map template.
+Push, pop, show, and hide panels with `pushPanel`/`popPanel`/`showPanel`/
+`hidePanel`; a navigation session exposes its options panel via
+`CPNavigationSession.optionsPanel`.
+
+Route sharing lets the vehicle's own navigation adopt the app's route. Opt
+in per `CPMapTemplate` with the delegate method
+`mapTemplateShouldProvideRouteSharing` plus
+`mapTemplate(_:didRequestToInsert:into:)` for vehicle-proposed
+`CPNavigationWaypoint` inserts (iOS 26.4+); iOS 27 adds
+`isRouteSharingEnabled`/`isRouteSharingSupported` on the navigation session
+and `didUpdateRouteSharingEnabled` on the delegate. A trip can disable
+sharing per-trip.
+
+Other iOS 27 navigation additions: `CPMultiStopCardConfiguration` for
+multi-stop trip cards and `CPChargingStationConnection` for charging
+connector details.
+
 ### CPSearchTemplate
 
 ```swift
@@ -302,6 +338,11 @@ nowPlaying.updateNowPlayingButtons([
 ])
 nowPlaying.add(self) // Register as CPNowPlayingTemplateObserver
 ```
+
+iOS 27 adds a mini player: every app showing Now Playing automatically
+gets the mini player UI on the car display. To fall back to the navigation
+bar icon, set `CPNowPlayingTemplate.shared.allowsMiniPlayer = false`
+(iOS 27+).
 
 ### Siri Assistant Cell
 
@@ -398,6 +439,10 @@ Default window: 800x480 at `@2x`. Enable extra options for navigation apps:
 defaults write com.apple.iphonesimulator CarPlayExtraOptions -bool YES
 ```
 
+In Xcode 27 the CarPlay simulator runs from Device Hub, and video apps
+test video-in-car with the Additional Tools for Xcode download; route
+sharing reports diagnostics to the simulated vehicle.
+
 ### Recommended Test Configurations
 
 | Configuration | Pixels | Scale |
@@ -460,6 +505,7 @@ Failure leaves the list in a loading state.
 ## Review Checklist
 
 - [ ] Correct CarPlay entitlement key in `Entitlements.plist`
+- [ ] Video apps (iOS 27+) hold both the video and audio entitlements and check `supportsVideoPlayback`
 - [ ] `UIApplicationSupportsMultipleScenes` set to `true`
 - [ ] `CPTemplateApplicationSceneSessionRoleApplication` scene in Info.plist
 - [ ] Scene delegate class name matches `UISceneDelegateClassName`
@@ -492,3 +538,4 @@ Failure leaves the list in a loading state.
 - [Displaying Content in CarPlay](https://sosumi.ai/documentation/carplay/displaying-content-in-carplay)
 - [Using the CarPlay Simulator](https://sosumi.ai/documentation/carplay/using-the-carplay-simulator)
 - [CarPlay HIG](https://sosumi.ai/design/human-interface-guidelines/carplay)
+- [Get the most out of CarPlay — WWDC26](https://sosumi.ai/videos/play/wwdc2026/212/)

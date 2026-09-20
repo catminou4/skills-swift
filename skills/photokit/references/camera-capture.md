@@ -89,6 +89,13 @@ final class CameraManager: NSObject {
         }
         photoOutput.maxPhotoQualityPrioritization = .quality
 
+        // iOS 27+: balanced-priority fast captures on supported devices
+        // (iPhone 16 and later) get deferred processing — the system may
+        // finish rendering in the background, so delivery to a preview or
+        // the photo library can lag the shutter. Choose `.balanced` for
+        // burst responsiveness and `.quality` when immediate final pixels
+        // matter.
+
         session.commitConfiguration()
     }
 

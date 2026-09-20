@@ -13,6 +13,7 @@ Advanced patterns for AVKit media playback beyond the main skill coverage.
 - [HDR Content](#hdr-content)
 - [SwiftUI Player Manager](#swiftui-player-manager)
 - [AVPlayerViewController in UIViewControllerRepresentable](#avplayerviewcontroller-in-uiviewcontrollerrepresentable)
+- [Now Playing Media Sessions (iOS 27+)](#now-playing-media-sessions-ios-27)
 
 ## Custom Player UI with AVPlayerLayer
 
@@ -666,3 +667,86 @@ struct SystemPlayerView: UIViewControllerRepresentable {
     }
 }
 ```
+
+## Now Playing Media Sessions (iOS 27+)
+
+The NowPlaying framework publishes playback state from any `@Observable`
+model to the Lock Screen, Control Center, Dynamic Island, StandBy, and
+CarPlay. It replaces hand-written `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter`
+bookkeeping for non-player-view-controller pipelines.
+
+### Publishing a Local Session
+
+Conform the playback model to `MediaSessionRepresentable`, then create a
+`MediaSession` with it. The framework observes the model, so changing
+`@Observable` properties updates the system surfaces automatically.
+
+```swift
+import NowPlaying
+
+@Observable
+final class PlayerModel: MediaSessionRepresentable {
+    let id = "com.example.player"
+    var currentTrack: Track?
+    var isPlaying = false
+    var currentTime: TimeInterval = 0
+
+    var content: (any MediaContentRepresentable)? {
+        guard let track = currentTrack else { return nil }
+        return MusicContent(
+            id: track.id,
+            songTitle: track.title,
+            artistName: track.artist,
+            albumName: track.album,
+            type: .audio,
+            duration: .finite(track.duration),
+            isExplicit: track.isExplicit,
+            artwork: Artwork(id: track.artworkID) { size in
+                let data = await self.loadArtworkData(with: size)
+                return try ArtworkRepresentation(data: data)
+            }
+        )
+    }
+
+    var playbackSnapshot: MediaPlaybackSnapshot? {
+        MediaPlaybackSnapshot(
+            state: isPlaying ? .playing(rate: 1.0) : .paused,
+            elapsedTime: currentTime,
+            timestamp: .now
+        )
+    }
+
+    var commands: [MediaCommand] { [
+        .play { await self.play() },
+        .pause { await self.pause() },
+        .next { await self.nextTrack() },
+        .previous { await self.previousTrack() },
+    ] }
+}
+
+let session = MediaSession(playerModel)
+try await session.requestToBecomeApplicationPrimary()
+```
+
+Other content types: `PodcastContent`, `MovieContent`, `TVShowContent`,
+`BookContent`, `RadioContent`, `HomeMediaContent`, `GenericContent`. Use
+`.continuous` duration for indefinite streams.
+
+### Remote Sessions
+
+`RemoteMediaSession` + `RemoteMediaSessionRepresentable` surface media
+playing on external devices (speakers, TVs) on the same system surfaces.
+iOS/iPadOS/Catalyst only. Requires a `RemoteMediaSessionExtension` app
+extension (extension point `remote-media`, configured with
+`RemoteMediaSessionExtensionConfiguration`): APNs pushes launch the
+extension, its `session(_:)` returns a model built from the latest state,
+and `update(_:)` applies new state from each push payload. Command
+closures forward to the remote device through the app's own channel, and a
+`devices` property of `MediaDevice` values drives volume controls.
+
+Media Sharing Extensions extend this to third-party playback protocols —
+protocol implementations ship as system-managed extensions, so the app
+calls one API and the system device picker covers every protocol.
+
+Reference: [Publishing media sessions](https://sosumi.ai/documentation/nowplaying/publishing-media-sessions),
+[Publishing remote media sessions](https://sosumi.ai/documentation/nowplaying/publishing-remote-media-sessions).

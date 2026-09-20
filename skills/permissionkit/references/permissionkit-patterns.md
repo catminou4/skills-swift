@@ -11,6 +11,7 @@ that exceed the main skill file's scope.
 - [Communication Limits Checking Pattern](#communication-limits-checking-pattern)
 - [SwiftUI Full-Screen Permission Flow](#swiftui-full-screen-permission-flow)
 - [macOS Integration](#macos-integration)
+- [Permission Flows and SwiftUI Action](#permission-flows-and-swiftui-action)
 - [Error Recovery Patterns](#error-recovery-patterns)
 
 ## Full UIKit Integration
@@ -420,6 +421,70 @@ func requestPermission(
 }
 #endif
 ```
+
+## Permission Flows and SwiftUI Action
+
+### AskPermissionAction (iOS 26.5+)
+
+In SwiftUI, send a question through the `askPermission` environment action
+instead of calling `AskCenter` directly:
+
+```swift
+struct SignificantUpdateView: View {
+    @Environment(\.askPermission) private var askPermission
+    let question: PermissionQuestion<SignificantAppUpdateTopic>
+
+    var body: some View {
+        Button("Ask for Update Approval") {
+            Task {
+                try await askPermission(question)
+            }
+        }
+    }
+}
+```
+
+### askSignificantChangePermission (iOS 27+)
+
+On iOS 27+, significant-update questions can specify a `PermissionFlow` and
+return a resolved `PermissionResult`. `PermissionFlow` selects the entry
+point; `PermissionResult` reports how the flow ended:
+
+```swift
+func requestUpdateApproval(
+    in viewController: UIViewController
+) async throws -> PermissionResult {
+    let question = PermissionQuestion<SignificantAppUpdateTopic>(
+        significantAppUpdateTopic: SignificantAppUpdateTopic(
+            description: "This update adds multiplayer chat features"
+        )
+    )
+
+    return try await AskCenter.shared.askSignificantChangePermission(
+        for: question,
+        permissionFlow: .acknowledgmentAlert,
+        in: viewController
+    )
+}
+```
+
+| `PermissionFlow` | Behavior |
+|---|---|
+| `.acknowledgmentAlert` | Presents the "Ask to Approve / Approve in Person / Cancel" acknowledgment alert first, then routes into the chosen flow |
+| `.approveInPerson` | Goes directly to the Approve-in-Person flow, prompting for the Screen Time passcode |
+| `.askToApprove` | Goes directly to the Messages compose sheet for the Ask to Approve flow |
+
+`PermissionResult` cases:
+
+| Case | Meaning |
+|---|---|
+| `.approveInPerson(approved:)` | Approve-in-Person resolved on-device; `approved` is the parent's passcode-verified decision |
+| `.askToApprove(didSend:)` | Ask-to-Approve resolved at the compose sheet; `didSend` is whether the child sent the question |
+| `.cancel` | The flow was canceled |
+
+`.askToApprove(didSend: true)` means the question was sent -- the parent's
+actual decision still arrives through `responses(for:)`; keep that observer
+running for async outcomes.
 
 ## Error Recovery Patterns
 

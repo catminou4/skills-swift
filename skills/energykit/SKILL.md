@@ -9,8 +9,9 @@ Use grid cleanliness and cost guidance to shift or reduce managed-device load.
 For managed-device insights, submit the device's real load events promptly.
 
 > **Beta-sensitive.** Core EnergyKit ships in iOS/iPadOS 26. The iOS/iPadOS 27
-> `ElectricalLoadDevice` and Home-facing LoadEvents experience are beta; re-check
-> current Apple documentation before relying on those APIs.
+> `ElectricalLoadDevice`, EV status events, and Home-facing LoadEvents
+> experience shipped with iOS 27; re-check current Apple documentation before
+> relying on those APIs.
 
 ## Contents
 
@@ -32,7 +33,7 @@ For managed-device insights, submit the device's real load events promptly.
 | Runtime | Load-event device API | Capabilities |
 |---|---|---|
 | iOS/iPadOS 26.x | `deviceID:` compatibility initializer | EnergyKit |
-| iOS/iPadOS 27+ beta | `ElectricalLoadDevice` with the `device:` initializer | EnergyKit; add EnergyKit LoadEvents for Home app integration |
+| iOS/iPadOS 27+ | `ElectricalLoadDevice` with the `device:` initializer, plus `ElectricVehicleStatusEvent` | EnergyKit; add EnergyKit LoadEvents for Home app integration |
 
 All EnergyKit use requires `com.apple.developer.energykit`; enable the EnergyKit
 capability on the app target. On iOS/iPadOS 27+, add the EnergyKit LoadEvents
@@ -73,7 +74,8 @@ EnergyKit provides two main capabilities:
 | `EnergyVenue` | A physical location (home) registered for energy management |
 | `ElectricVehicleLoadEvent` | Load event for EV charger telemetry |
 | `ElectricHVACLoadEvent` | Load event for HVAC system telemetry |
-| `ElectricalLoadDevice` | iOS/iPadOS 27+ beta device identity for load events |
+| `ElectricalLoadDevice` | iOS/iPadOS 27+ device identity for load events |
+| `ElectricVehicleStatusEvent` | iOS/iPadOS 27+ point-in-time EV charger status snapshot |
 | `ElectricityInsightService` | Service for querying energy/runtime insights |
 | `ElectricityInsightRecord` | Historical energy or runtime data, optionally broken down by tariff or 26.1+ grid cleanliness |
 | `ElectricityInsightQuery` | Query for historical insight data |
@@ -346,6 +348,40 @@ Only promise Home app device names, energy context, activity logs, charts, and
 trend notifications on iOS/iPadOS 27+ when both the base EnergyKit and EnergyKit
 LoadEvents capabilities are present.
 
+### EV Status Events (iOS 27+)
+
+`ElectricVehicleStatusEvent` (iOS/iPadOS 27+) is a point-in-time snapshot of an
+EV connected to a charger, separate from session-based load events: it explains
+why a vehicle is not charging, when charging will begin, and why charging
+started or stopped. Submit status events so the Home app can show an
+informative activity log.
+
+```swift
+let statusEvent = ElectricVehicleStatusEvent(
+    timestamp: Date(),
+    device: device,              // ElectricalLoadDevice
+    venueID: venue.id,
+    status: .chargingIdle(.waitingForCleanerEnergy),
+    stateOfCharge: 45,
+    energy: Measurement(value: 22, unit: .kilowattHours),
+    estimatedRange: Measurement(value: 130, unit: .kilometers),
+    chargingTarget: target,      // ElectricVehicleStatusEvent.ChargingTarget?
+    sessionIdentifier: session.id  // links to the ElectricVehicleLoadEvent session
+)
+
+try await venue.submitEvents([statusEvent])
+```
+
+`status` pairs a `Status` with an `ElectricVehicleChargingReason`
+(`ActiveReason` for why the vehicle is charging, `IdleReason` for why it is
+not). `chargingTarget` conveys the target charge, a scheduled start, and the
+estimated completion. Pass the current load-event session's ID as
+`sessionIdentifier` to link the two event streams. On iOS 27+, `deviceName`
+also reports the human-readable name the Home app shows for the device.
+
+`ElectricVehicleLoadEvent.ElectricalMeasurement.performanceMetrics` (iOS 27+)
+carries `estimatedRange` and `batteryTemperature` on load measurements.
+
 ## Electricity Insights
 
 Query historical energy and runtime data for devices using
@@ -434,6 +470,8 @@ year. See [references/energykit-patterns.md](references/energykit-patterns.md) f
 - [EnergyVenue](https://sosumi.ai/documentation/energykit/energyvenue)
 - [ElectricalLoadDevice](https://sosumi.ai/documentation/energykit/electricalloaddevice)
 - [ElectricVehicleLoadEvent](https://sosumi.ai/documentation/energykit/electricvehicleloadevent)
+- [ElectricVehicleStatusEvent](https://sosumi.ai/documentation/energykit/electricvehiclestatusevent) (iOS 27+)
+- [ElectricVehicleChargingReason](https://sosumi.ai/documentation/energykit/electricvehiclechargingreason) (iOS 27+)
 - [ElectricHVACLoadEvent](https://sosumi.ai/documentation/energykit/electrichvacloadevent)
 - [ElectricityInsightService](https://sosumi.ai/documentation/energykit/electricityinsightservice)
 - [ElectricityInsightRecord](https://sosumi.ai/documentation/energykit/electricityinsightrecord)

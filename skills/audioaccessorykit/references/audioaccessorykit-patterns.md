@@ -12,6 +12,7 @@ strategies.
 - [Error Recovery Patterns](#error-recovery-patterns)
 - [AccessorySetupKit Integration](#accessorysetupkit-integration)
 - [Architecture Patterns](#architecture-patterns)
+- [Spatial Audio and Head Tracking](#spatial-audio-and-head-tracking)
 
 ## Complete Registration Flow
 
@@ -532,3 +533,121 @@ final class AudioAccessoryCoordinator {
     }
 }
 ```
+
+## Spatial Audio and Head Tracking
+
+iOS 27 adds spatial audio and head tracking for third-party audio accessories.
+Available for developer testing on iPhone and iPad in iOS/iPadOS 27; EU
+customers get it in a later 27 release.
+
+### Declaring Spatial Support in the Container App
+
+Pass an `AudioComponentDescription` identifying the accessory's spatial audio
+extension component and declare the iOS 27 capabilities:
+
+```swift
+let spatialComponent = AudioComponentDescription(
+    componentType: /* your spatial audio extension component type */,
+    componentSubType: 0,
+    componentManufacturer: /* your four-character code */,
+    componentFlags: 0,
+    componentFlagsMask: 0
+)
+
+let configuration = AccessoryControlDevice.Configuration(
+    devicePlacement: .onHead,
+    deviceCapabilities: [.audioSwitching, .placement, .audioSpatialization, .headTracking],
+    spatialExtensionDescription: spatialComponent
+)
+
+try await AccessoryControlDevice.register(accessory, configuration)
+```
+
+### Head Tracking Handler in the App Extension
+
+`AudioAccessoryHeadTracking` (iOS 27+) conforms to `AccessoryFeature` and
+`AppExtensionPoint.Capability`. Its initializer takes a factory that returns
+your `Handler`; `activate(for:)` delivers the `Session` used to forward IMU
+frames to the Spatial Audio renderer:
+
+```swift
+final class HeadTrackingFeature {
+    private(set) var session: AudioAccessoryHeadTracking.Session?
+
+    /// Register on the extension's declared capabilities.
+    func makeCapability() -> AudioAccessoryHeadTracking {
+        AudioAccessoryHeadTracking { HeadTrackingHandler(owner: self) }
+    }
+}
+
+final class HeadTrackingHandler: AudioAccessoryHeadTracking.Handler {
+    private weak var owner: HeadTrackingFeature?
+
+    init(owner: HeadTrackingFeature) { self.owner = owner }
+
+    func activate(for session: AudioAccessoryHeadTracking.Session) {
+        owner?.session = session
+        if session.isHeadTrackingActive {
+            // Begin forwarding sensor frames.
+        }
+    }
+
+    func handleAccessorySensorMessage(_ message: TransportMessage) {
+        // Parse inbound transport message from the accessory's transport
+        // extension, then forward IMU frames:
+        // try? owner?.session?.sendDataToAudioExtension(frameData)
+    }
+
+    func headTrackingStateDidChange(isActive: Bool) {
+        // Settings / Control Center toggled head tracking for this accessory.
+    }
+
+    func invalidate() {
+        owner?.session = nil
+    }
+}
+```
+
+Keep `session.restorationID` stable and accessible: the system uses it to wake
+the extension out of suspension when sensor traffic arrives.
+
+### Consuming Raw Sensor Data in the Audio Rendering Extension
+
+`AccessorySensorUpdates` (iOS 27+) is an `AsyncSequence` of raw sensor packets
+for an accessory registered `.headTracking`, brokered by `audioaccessoryd`
+over XPC. No XPC resources are held until iteration starts; cancel the owning
+`Task` to stop:
+
+```swift
+final class SensorDataConsumer {
+    private var sensorTask: Task<Void, Never>?
+
+    func start(for accessoryIdentifier: String) {
+        guard AccessorySensorUpdates.isSupported else { return }
+        let updates = AccessorySensorUpdates(for: accessoryIdentifier)
+        sensorTask = Task {
+            do {
+                for try await packet in updates {
+                    self.processPacket(packet)
+                }
+            } catch AccessorySensorUpdates.StreamError.connectionLost {
+                // Terminal: the XPC stream is finished; do not re-iterate.
+            } catch is AudioAccessoryError {
+                // .invalidDataSize / .notActivated
+            }
+        }
+    }
+
+    func stop() {
+        sensorTask?.cancel()
+        sensorTask = nil
+    }
+
+    private func processPacket(_ packet: Data) { }
+}
+```
+
+Treat `StreamError.connectionLost` as terminal -- create a new
+`AccessorySensorUpdates` sequence to resume. `AudioAccessoryError` failures
+are the head-tracking pipeline's error surface, distinct from
+`AccessoryControlDevice.Error` on configuration calls.

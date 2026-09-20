@@ -58,8 +58,10 @@ Eligibility depends on the device region and OS version. Do not hard-code
 region checks; rely on the system API.
 
 Availability anchors: process APIs are iOS/iPadOS 17.4+, `BEDownloadMonitor`
-is iOS 18.2+, `.revision2` restricted sandbox is iOS 26+, and
-`RenderingExtensionFeature.coreML` is iOS 26.2+.
+is iOS 18.2+, `.revision2` restricted sandbox is iOS 26+,
+`RenderingExtensionFeature.coreML` is iOS 26.2+, and the
+`.screenCapture(environment:)` capability plus `BEWebContentFilter`'s
+frame-aware `evaluateURL` and `requestPermission` APIs are iOS 27+.
 
 ## Entitlements
 
@@ -288,6 +290,7 @@ grant.invalidate()
 | `.background` | Background tasks, prefetching |
 | `.suspended` | Minimal activity, pending cleanup |
 | `.mediaPlaybackAndCapture(environment:)` | Audio/video playback, camera/mic capture |
+| `.screenCapture(environment:)` (iOS 27+) | AV hardware access for screen capture and playback |
 
 ### Media Environment
 
@@ -303,6 +306,10 @@ let grant = try contentProcess.grantCapability(
 try mediaEnv.activate()
 let captureSession = try mediaEnv.makeCaptureSession()
 ```
+
+On iOS 27+, grant `.screenCapture(environment: mediaEnv)` when a helper
+extension needs AV hardware for screen capture and playback; it takes the same
+`MediaEnvironment`.
 
 ### Visibility Propagation
 
@@ -485,4 +492,6 @@ unsupported devices can download the app and hit runtime failures.
 - [Web Browser Engine Entitlement](https://sosumi.ai/documentation/bundleresources/entitlements/com.apple.developer.web-browser-engine.host)
 - [BrowserKit framework](https://sosumi.ai/documentation/browserkit)
 - [BrowserEngineCore framework](https://sosumi.ai/documentation/browserenginecore)
+- [ProcessCapability.screenCapture(environment:)](https://sosumi.ai/documentation/browserenginekit/processcapability/screencapture(environment:)) (iOS 27+)
+- [BEWebContentFilter](https://sosumi.ai/documentation/browserenginekit/bewebcontentfilter) (frame-aware evaluation and permission requests are iOS 27+)
 - [Sample: Developing a browser app with an alternative engine](https://sosumi.ai/documentation/browserenginekit/developing-a-browser-app-that-uses-an-alternative-browser-engine)

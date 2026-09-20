@@ -43,6 +43,8 @@ Use this centralized version matrix and verify it against the current SDK:
 | Core | Topics, handles, questions, responses, choices, `CommunicationLimits` | 26.0+ |
 | Errors | `AskError` | 26.1+ |
 | Presentation | `AskCenter`, ask/response sequences, `PermissionButton`, significant-update topics | 26.2+ |
+| SwiftUI ask action | `AskPermissionAction` (`@Environment(\.askPermission)`) | 26.5+ |
+| Permission flows | `askSignificantChangePermission`, `PermissionFlow`, `PermissionResult` | 27.0+ |
 
 ## Core Concepts
 
@@ -67,6 +69,9 @@ PermissionKit manages a flow where:
 | `CommunicationHandle` | A phone number, email, or custom identifier |
 | `CommunicationLimits` | Checks which communication handles are known to the system |
 | `SignificantAppUpdateTopic` | Topic for significant app update permission requests |
+| `AskPermissionAction` | iOS 26.5+ SwiftUI environment action that sends a question |
+| `PermissionFlow` | iOS 27+ flow selection for significant-update requests |
+| `PermissionResult` | iOS 27+ resolved outcome of a permission flow |
 
 ## Checking Communication Limits
 
@@ -339,6 +344,44 @@ for await response in AskCenter.shared.responses(for: SignificantAppUpdateTopic.
 // blocked or offer a retry. Child cancellation produces no denial response.
 ```
 
+### Permission Flows (iOS 27+)
+
+On iOS 27+, `askSignificantChangePermission(for:permissionFlow:in:)` presents a
+significant-update question through a chosen `PermissionFlow` and returns a
+resolved `PermissionResult` instead of relying on the response stream:
+
+```swift
+let result = try await AskCenter.shared.askSignificantChangePermission(
+    for: question,
+    permissionFlow: .acknowledgmentAlert,
+    in: viewController
+)
+
+switch result {
+case .approveInPerson(let approved):
+    // Approve in Person flow resolved; `approved` is the outcome.
+    requestStates[question.id] = approved ? .approved : .denied
+case .askToApprove(let didSend):
+    // Ask to Approve (Messages compose) resolved; `didSend` reports whether
+    // the child sent the question. A parent's decision still arrives via
+    // responses(for:).
+    requestStates[question.id] = didSend ? .pending : .expired
+case .cancel:
+    requestStates[question.id] = .expired
+@unknown default:
+    break
+}
+```
+
+| `PermissionFlow` | Behavior |
+|---|---|
+| `.acknowledgmentAlert` | Shows the "Ask to Approve / Approve in Person / Cancel" alert, then routes into the chosen flow |
+| `.approveInPerson` | Goes straight to the Approve-in-Person flow (Screen Time passcode prompt) |
+| `.askToApprove` | Goes straight to the Messages compose sheet |
+
+Keep the same `responses(for:)` observer: `.askToApprove(didSend:)` means the
+child sent the question, not that the parent decided.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -373,5 +416,8 @@ for await response in AskCenter.shared.responses(for: SignificantAppUpdateTopic.
 - [CommunicationHandle](https://sosumi.ai/documentation/permissionkit/communicationhandle)
 - [CommunicationLimits](https://sosumi.ai/documentation/permissionkit/communicationlimits)
 - [SignificantAppUpdateTopic](https://sosumi.ai/documentation/permissionkit/significantappupdatetopic)
+- [AskPermissionAction](https://sosumi.ai/documentation/permissionkit/askpermissionaction) (iOS 26.5+)
+- [PermissionFlow](https://sosumi.ai/documentation/permissionkit/permissionflow) (iOS 27+)
+- [PermissionResult](https://sosumi.ai/documentation/permissionkit/permissionresult) (iOS 27+)
 - [AskError](https://sosumi.ai/documentation/permissionkit/askerror)
 - [Creating a communication experience](https://sosumi.ai/documentation/permissionkit/creating-a-communication-experience)

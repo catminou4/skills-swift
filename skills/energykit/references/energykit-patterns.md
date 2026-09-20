@@ -308,6 +308,42 @@ final class EVChargingManager {
 }
 ```
 
+### EV Status Events
+
+On iOS/iPadOS 27+, also submit `ElectricVehicleStatusEvent` snapshots so the
+Home app can explain idle periods and upcoming charging. Status events are
+point-in-time observations without session context; pass the live load-event
+session ID as `sessionIdentifier` to link them:
+
+```swift
+func reportIdleWaiting(venue: EnergyVenue) async throws {
+    let device = ElectricalLoadDevice(
+        id: deviceID, name: deviceName, type: .electricVehicle
+    )
+
+    let status = ElectricVehicleStatusEvent(
+        timestamp: Date(),
+        device: device,
+        venueID: venue.id,
+        status: .chargingIdle(.waitingForCleanerEnergy),
+        stateOfCharge: stateOfCharge,
+        energy: Measurement(value: totalEnergy, unit: .kilowattHours),
+        sessionIdentifier: currentSessionID
+    )
+
+    try await venue.submitEvents([status])
+}
+```
+
+Other `Status` states pair with `ElectricVehicleChargingReason`:
+`.chargingActive(_:)` takes an `ActiveReason` (`.userInitiated`,
+`.scheduledStart`, `.cleanerEnergyAvailable`, ...), `.chargingIdle(_:)` takes
+an `IdleReason` (`.targetStateOfChargeReached`, `.userPaused`,
+`.chargerFault`, `.waitingForLowerElectricityRates`, ...). Fill in
+`chargingTarget` when the vehicle reports a target charge, scheduled start, or
+estimated completion. `ElectricalMeasurement.performanceMetrics` carries
+`estimatedRange` and `batteryTemperature` on load events.
+
 ## HVAC Control Manager
 
 Track HVAC load events with guidance compliance.

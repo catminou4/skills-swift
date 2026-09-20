@@ -1,6 +1,6 @@
 ---
 name: audioaccessorykit
-description: "Support automatic audio switching for paired third-party Bluetooth headphones or earbuds with AudioAccessoryKit. Use when a companion app registers an audio accessory, an app extension reports worn/removed placement or connected source-device changes, or AccessoryControlDevice capabilities and errors need handling. Do not use for general AVAudioSession routing, Bluetooth transport, or initial accessory pairing."
+description: "Support automatic audio switching and iOS 27+ spatial audio/head tracking for paired third-party Bluetooth headphones or earbuds with AudioAccessoryKit. Use when a companion app registers an audio accessory, an app extension reports worn/removed placement or connected source-device changes, AudioAccessoryHeadTracking or AccessorySensorUpdates handle IMU data for spatial audio, or AccessoryControlDevice capabilities and errors need handling. Do not use for general AVAudioSession routing, Bluetooth transport, or initial accessory pairing."
 ---
 
 # AudioAccessoryKit
@@ -9,10 +9,14 @@ Automatic audio switching support and intelligent audio routing inputs for
 third-party audio accessories. Enables companion apps to register audio
 accessory configuration with the system, and app extensions to report placement
 and connected source changes that help the system switch audio output.
-Available iOS 26.4+ / iPadOS 26.4+.
+Available iOS 26.4+ / iPadOS 26.4+; iOS/iPadOS 27 adds spatial audio and head
+tracking support.
 
 > **Beta-sensitive.** AudioAccessoryKit is new in iOS 26.4. Re-check current
-> Apple documentation before relying on specific API details.
+> Apple documentation before relying on specific API details. The iOS 27
+> spatial audio and head tracking APIs are developer-testing-only on iPhone and
+> iPad in this release; Apple states EU availability arrives in a future
+> iOS 27 / iPadOS 27 release.
 
 AudioAccessoryKit builds on top of AccessorySetupKit. The accessory must first
 be paired via AccessorySetupKit before it can be registered for audio features.
@@ -28,6 +32,7 @@ from the app extension.
 - [Device Placement](#device-placement)
 - [Connected Audio Sources](#connected-audio-sources)
 - [Feature Discovery](#feature-discovery)
+- [Spatial Audio and Head Tracking](#spatial-audio-and-head-tracking)
 - [Error Handling](#error-handling)
 - [Common Mistakes](#common-mistakes)
 - [Review Checklist](#review-checklist)
@@ -135,9 +140,14 @@ Automatic switching commonly uses these `AccessoryControlDevice.Capabilities`:
 |---|---|
 | `.audioSwitching` | Device supports automatic audio switching |
 | `.placement` | Device can report its physical placement |
+| `.audioSpatialization` (iOS 27+) | Device supports spatial audio rendering |
+| `.headTracking` (iOS 27+) | Device supports head tracking for spatial audio |
 
 Combine capabilities as needed. Do not declare `.placement` unless the
-accessory can keep the system updated with real placement state.
+accessory can keep the system updated with real placement state. Declare
+`.audioSpatialization` or `.headTracking` only for accessories that feed the
+spatial audio pipeline described in
+[Spatial Audio and Head Tracking](#spatial-audio-and-head-tracking).
 
 ## Device Placement
 
@@ -202,6 +212,7 @@ Automatic switching uses these configuration fields:
 | `devicePlacement` | `Placement?` | Current physical placement |
 | `primaryAudioSourceDeviceIdentifier` | `Data?` | Primary connected Bluetooth device address |
 | `secondaryAudioSourceDeviceIdentifier` | `Data?` | Secondary connected Bluetooth device address |
+| `spatialExtensionDescription` (iOS 27+) | `AudioComponentDescription?` | Identifies the accessory's spatial audio extension component |
 
 ## Feature Discovery
 
@@ -220,6 +231,15 @@ if caps.contains(.audioSwitching) {
 
 if caps.contains(.placement) {
     // Device reports physical placement
+}
+
+// iOS 27+:
+if caps.contains(.audioSpatialization) {
+    // Device supports spatial audio
+}
+
+if caps.contains(.headTracking) {
+    // Device supports head tracking
 }
 ```
 
@@ -244,6 +264,85 @@ if let placement = device.configuration.devicePlacement {
 }
 ```
 
+## Spatial Audio and Head Tracking
+
+iOS 27 adds head tracking and spatial audio support for third-party audio
+accessories. These APIs are available for developer testing on iPhone and iPad
+in iOS/iPadOS 27 and reach EU customers in a later 27 release.
+
+### Declaring Spatial Support
+
+Describe the accessory's spatial audio extension with an
+`AudioComponentDescription` and the iOS 27 capabilities:
+
+```swift
+let configuration = AccessoryControlDevice.Configuration(
+    devicePlacement: .onHead,
+    deviceCapabilities: [.audioSwitching, .placement, .audioSpatialization, .headTracking],
+    spatialExtensionDescription: spatialComponent  // AudioComponentDescription
+)
+```
+
+Use the initializer with `spatialExtensionDescription:`; the older initializer
+lacks spatial support.
+
+### Head Tracking Sessions
+
+`AudioAccessoryHeadTracking` (iOS 27+) is an `AccessoryFeature` and
+`AppExtensionPoint.Capability`; construct it with a factory returning your
+`AudioAccessoryHeadTracking.Handler`:
+
+```swift
+final class HeadTrackingHandler: AudioAccessoryHeadTracking.Handler {
+    func activate(for session: AudioAccessoryHeadTracking.Session) {
+        // Session established; session.isHeadTrackingActive reports state.
+    }
+
+    func handleAccessorySensorMessage(_ message: TransportMessage) {
+        // Inbound transport message from the accessory's transport extension.
+    }
+
+    func headTrackingStateDidChange(isActive: Bool) {
+        // User-facing head-tracking state changed (Settings / Control Center).
+    }
+
+    func invalidate() {
+        // Session invalidated; drop references and stop forwarding.
+    }
+}
+
+let headTracking = AudioAccessoryHeadTracking { HeadTrackingHandler() }
+```
+
+Inside `activate(for:)`, forward accessory IMU frames into the Spatial Audio
+renderer with `try session.sendDataToAudioExtension(Data)`. `restorationID` is the
+stable identifier the system uses to wake the extension when sensor traffic
+arrives.
+
+### Raw Sensor Updates
+
+An Audio Rendering Extension receives raw sensor packets from an accessory
+registered `.headTracking` via `AccessorySensorUpdates` (iOS 27+), an
+`AsyncSequence` brokered by `audioaccessoryd` over XPC:
+
+```swift
+guard AccessorySensorUpdates.isSupported else { return }
+let updates = AccessorySensorUpdates(for: accessoryIdentifier)
+sensorTask = Task {
+    do {
+        for try await packet in updates {
+            processSensorData(packet)
+        }
+    } catch AccessorySensorUpdates.StreamError.connectionLost {
+        // Terminal; the XPC stream is finished.
+    }
+}
+```
+
+No XPC resources are acquired until iteration begins; cancel the owning task to
+stop updates. Head-tracking failures surface as `AudioAccessoryError`
+(`.invalidDataSize`, `.notActivated`) rather than `AccessoryControlDevice.Error`.
+
 ## Error Handling
 
 `AccessoryControlDevice.Error` covers failure cases during registration and
@@ -255,6 +354,10 @@ updates:
 | `.invalidRequest` | Request parameters are invalid |
 | `.invalidated` | Device registration has been invalidated |
 | `.unknown` | An unspecified error occurred |
+
+Head tracking and sensor streams (iOS 27+) throw `AudioAccessoryError` instead:
+`.invalidDataSize` for malformed sensor data, `.notActivated` when a session or
+stream is used before activation.
 
 Handle errors from registration and update calls:
 
@@ -332,6 +435,8 @@ do {
 - [ ] Updates only touch fields for capabilities declared during registration
 - [ ] `.placement` capability accompanied by ongoing placement updates
 - [ ] Placement transitions (on/off head) reported promptly
+- [ ] `.audioSpatialization`/`.headTracking` only on iOS 27+ with `spatialExtensionDescription` set
+- [ ] Head-tracking handlers forward frames via `Session.sendDataToAudioExtension` and stream lifetimes are canceled cleanly
 - [ ] Audio source device identifiers updated on Bluetooth connection changes
 - [ ] All `AccessoryControlDevice.Error` cases handled, including `@unknown default`
 - [ ] `update(_:)` calls use `try await` and handle errors
@@ -350,4 +455,7 @@ do {
 - [AccessoryControlDevice.Configuration](https://sosumi.ai/documentation/audioaccessorykit/accessorycontroldevice/configuration-swift.struct)
 - [AccessoryControlDevice.Capabilities](https://sosumi.ai/documentation/audioaccessorykit/accessorycontroldevice/capabilities)
 - [AccessoryControlDevice.Placement](https://sosumi.ai/documentation/audioaccessorykit/accessorycontroldevice/placement)
+- [AudioAccessoryHeadTracking](https://sosumi.ai/documentation/audioaccessorykit/audioaccessoryheadtracking) (iOS 27+)
+- [AccessorySensorUpdates](https://sosumi.ai/documentation/audioaccessorykit/accessorysensorupdates) (iOS 27+)
+- [AudioAccessoryError](https://sosumi.ai/documentation/audioaccessorykit/audioaccessoryerror) (iOS 27+)
 - [AccessorySetupKit framework](https://sosumi.ai/documentation/accessorysetupkit) (prerequisite for pairing)

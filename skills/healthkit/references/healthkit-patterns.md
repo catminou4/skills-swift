@@ -5,12 +5,14 @@ Overflow reference for the `healthkit` skill. Contains advanced patterns that ex
 ## Contents
 
 - [Workout Session Lifecycle](#workout-session-lifecycle)
+- [Workout Zones (iOS 27+)](#workout-zones-ios-27)
 - [Platform and Authorization Edge Cases](#platform-and-authorization-edge-cases)
 - [Background Delivery Details](#background-delivery-details)
 - [Anchored Object Queries](#anchored-object-queries)
 - [Predicate-Based Filtering](#predicate-based-filtering)
 - [Statistics Collection for Charts](#statistics-collection-for-charts)
 - [HealthKit + SwiftUI Integration](#healthkit--swiftui-integration)
+- [Menopausal State (iOS 27+)](#menopausal-state-ios-27)
 - [Characteristic Types](#characteristic-types)
 
 ## Workout Session Lifecycle
@@ -222,6 +224,67 @@ func sendDataToRemote(_ data: Data) async throws {
 }
 ```
 
+## Workout Zones (iOS 27+)
+
+iOS 27 / watchOS 27 add zone data for heart-rate and cycling-power workouts.
+Recorded workouts expose `zoneGroupsByType` (`[HKQuantityType:
+HKWorkoutZoneGroup]?`) or `zoneGroup(for:)` on `HKWorkout` and on each
+`HKWorkoutActivity`. A zone group carries the `HKWorkoutZoneConfiguration` that
+defined the boundaries plus `zoneDurations` (`[HKWorkoutZoneDuration]`, time
+spent in each zone).
+
+```swift
+func readHeartRateZones(from workout: HKWorkout) {
+    guard let group = workout.zoneGroup(for: HKQuantityType(.heartRate))
+            ?? workout.zoneGroupsByType?[HKQuantityType(.heartRate)] else {
+        return // workout predates zones or lacks heart-rate zone data
+    }
+
+    for (index, zone) in group.configuration.zones.enumerated() {
+        // zone.index, zone.minimum, zone.maximum
+        print("Zone \(zone.index): \(zone.minimum)-\(zone.maximum) bpm")
+    }
+    for duration in group.zoneDurations {
+        print("Zone \(duration.zone.index): \(duration.duration)s")
+    }
+}
+```
+
+`HKHealthStore.preferredWorkoutZoneConfiguration(for:)` returns the person's
+preferred zones (Health Settings manual zones or system-generated) or `nil`
+when unconfigured. Build per-workout custom zones with
+`HKWorkoutZoneConfiguration(quantityType:zoneBoundaries:)`; its `source`
+property identifies where the configuration came from.
+
+```swift
+let preferred = try await healthStore.preferredWorkoutZoneConfiguration(
+    for: HKQuantityType(.heartRate)
+)
+
+let custom = HKWorkoutZoneConfiguration(
+    quantityType: HKQuantityType(.heartRate),
+    zoneBoundaries: [100, 120, 140, 160, 180]
+)
+```
+
+During a live workout, `HKLiveWorkoutBuilderDelegate` gains an optional
+`workoutBuilder(_:didUpdateWorkoutZone:)` callback that delivers an
+`HKLiveWorkoutZoneUpdate` (`zoneGroup`, `currentZoneDuration`,
+`previousZoneDuration`, `lastSampleProcessedDate`) when the person's zone
+changes.
+
+```swift
+extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
+    func workoutBuilder(
+        _ workoutBuilder: HKLiveWorkoutBuilder,
+        didUpdateWorkoutZone update: HKLiveWorkoutZoneUpdate
+    ) {
+        let current = update.currentZoneDuration?.zone.index
+        // update zone UI
+    }
+}
+```
+
 ## Platform and Authorization Edge Cases
 
 - Call `HKHealthStore.isHealthDataAvailable()` before any other HealthKit API.
@@ -239,6 +302,11 @@ func sendDataToRemote(_ data: Data) async throws {
 - People can change HealthKit permissions later in Settings or the Health app.
   Refresh permission-sensitive UI and write paths instead of assuming the
   original authorization outcome still applies.
+- Starting in iOS 27, the read-permission flow offers limited recent history or
+  full history. Call `earliestAuthorizedSampleDate(for:)` to learn the earliest
+  readable date per type; a type you were granted can still report a recent
+  cutoff. Clamp query start dates and treat pre-boundary gaps as unknown. The
+  boundary applies to a sample's end date.
 - In Vision Pro Guest User sessions, previously authorized data may be readable,
   but new authorization and writes can fail. Treat HealthKit writes as
   best-effort unless the user explicitly initiated a save action that needs an
@@ -640,6 +708,31 @@ struct MyHealthApp: App {
                 .environment(healthManager)
         }
     }
+}
+```
+
+## Menopausal State (iOS 27+)
+
+iOS 27 adds two Reproductive Health category types. `.menopausalState` is a
+point-in-time sample — its start and end dates must be identical or the save
+fails — with `HKCategoryValueMenopausalState` values `.menopause`,
+`.perimenopause`, and `.none` (a confirmed non-menopausal state, distinct from
+"no data"). `.bleedingAfterMenopause` is an interval sample using the existing
+`HKCategoryValueVaginalBleeding` intensity values (`unspecified`, `light`,
+`medium`, `heavy`). Both are read/write and use standard category-type
+authorization.
+
+```swift
+func recordMenopausalState(_ state: HKCategoryValueMenopausalState) async throws {
+    let type = HKCategoryType(.menopausalState)
+    let now = Date()
+    let sample = HKCategorySample(
+        type: type,
+        value: state.rawValue,
+        start: now,
+        end: now // point-in-time: start must equal end
+    )
+    try await healthStore.save(sample)
 }
 ```
 

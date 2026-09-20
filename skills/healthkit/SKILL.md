@@ -1,6 +1,6 @@
 ---
 name: healthkit
-description: "Read, write, and query Apple Health data using HealthKit. Covers HKHealthStore authorization, sample queries, statistics queries, statistics collection queries for charts, saving HKQuantitySample data, background delivery, workout sessions with HKWorkoutSession and HKLiveWorkoutBuilder, HKUnit, and HKQuantityTypeIdentifier values. Use when integrating with Apple Health, displaying health metrics, recording workouts, or enabling background health data delivery."
+description: "Read, write, and query Apple Health data using HealthKit. Covers HKHealthStore authorization, sample queries, statistics queries, statistics collection queries for charts, saving HKQuantitySample data, background delivery, workout sessions with HKWorkoutSession and HKLiveWorkoutBuilder, iOS 27+ workout zones and menopausal-state samples, HKUnit, and HKQuantityTypeIdentifier values. Use when integrating with Apple Health, displaying health metrics, recording workouts, handling limited-history read authorization, or enabling background health data delivery."
 ---
 
 # HealthKit
@@ -103,6 +103,27 @@ case .sharingDenied:
     break
 @unknown default:
     break
+}
+```
+
+### Limited History Read Access (iOS 27+)
+
+Starting in iOS 27, the HealthKit permissions flow lets the user grant either a
+limited window of recent sample history or their full history. Time-limited
+authorization applies only to sample types. Your app cannot distinguish full
+access from denied access; limited authorization is the only state it can
+identify. After authorization, call `earliestAuthorizedSampleDate(for:)` to get
+the earliest readable date per type, clamp query start dates to it, and treat
+older gaps as unknown rather than absent. HealthKit evaluates the boundary
+against a sample's end date, so a sample that begins before the boundary but
+ends after it is still readable.
+
+```swift
+let earliest = try await healthStore.earliestAuthorizedSampleDate(
+    for: [HKQuantityType(.stepCount)]
+)
+if let cutoff = earliest[HKQuantityType(.stepCount)] {
+    // Clamp read windows to cutoff; do not assume history before it exists
 }
 ```
 
@@ -333,6 +354,21 @@ Handle each thrown error without blindly repeating teardown. A successful
 `finishWorkout()` can return no workout object while the device is locked, so a
 `nil` result alone is not failure.
 
+### Workout Zones (iOS 27+)
+
+iOS 27 / watchOS 27 add heart-rate and cycling-power workout zones. Request
+authorization for workouts plus the relevant quantity types (`.heartRate`,
+`.cyclingPower`), then read `zoneGroupsByType` or `zoneGroup(for:)` on
+`HKWorkout` or an individual `HKWorkoutActivity`. Each `HKWorkoutZoneGroup`
+pairs an `HKWorkoutZoneConfiguration` (ordered `HKWorkoutZone` thresholds) with
+`HKWorkoutZoneDuration` time-in-zone values. Fetch the person's preferred or
+system-generated zones via `healthStore.preferredWorkoutZoneConfiguration(for:)`
+and provide per-workout custom zones with
+`HKWorkoutZoneConfiguration(quantityType:zoneBoundaries:)`. During an active
+session, `HKLiveWorkoutBuilderDelegate` gains the optional
+`workoutBuilder(_:didUpdateWorkoutZone:)` callback, which receives an
+`HKLiveWorkoutZoneUpdate` when the person changes zones.
+
 For full workout lifecycle management including pause/resume, delegate handling, and multi-device mirroring, see [references/healthkit-patterns.md](references/healthkit-patterns.md).
 
 ## Common Data Types
@@ -356,7 +392,14 @@ For full workout lifecycle management including pause/resume, delegate handling,
 
 ### HKCategoryTypeIdentifier
 
-Common category types: `.sleepAnalysis`, `.mindfulSession`, `.appleStandHour`
+Common category types: `.sleepAnalysis`, `.mindfulSession`, `.appleStandHour`.
+iOS 27 adds two Reproductive Health types: `.menopausalState`, a point-in-time
+`HKCategorySample` whose start and end dates must be identical, with
+`HKCategoryValueMenopausalState` values `.menopause`, `.perimenopause`, and
+`.none` (a confirmed non-menopausal state, not missing data); and
+`.bleedingAfterMenopause`, an interval sample using the existing
+`HKCategoryValueVaginalBleeding` intensity values. Both are read/write and use
+standard category-type authorization.
 
 ### HKCharacteristicType
 
@@ -403,6 +446,9 @@ HKUnit.literUnit(with: .deci)               // Deciliters
 7. **Using cumulative stats for discrete values.** Match statistics options to
    the data type: cumulative sums for steps/energy, discrete average/min/max for
    heart rate, weight, and similar samples.
+8. **Assuming all history is readable.** On iOS 27+, users can grant limited
+   recent history instead of full history; consult
+   `earliestAuthorizedSampleDate(for:)` and treat pre-boundary data as unknown,
 
 ## Review Checklist
 
@@ -424,6 +470,13 @@ HKUnit.literUnit(with: .deci)               // Deciliters
       `endCollection` and `finishWorkout`; state clears only after successful
       finalization
 - [ ] Workout API availability and live heart-rate sensor requirements handled
+- [ ] iOS 27+ history-dependent reads clamped with
+      `earliestAuthorizedSampleDate(for:)`; limited-history users handled without
+      assuming earlier data is absent
+- [ ] Workout zone features gated to iOS 27/watchOS 27 (`.zoneGroupsByType`,
+      `preferredWorkoutZoneConfiguration(for:)`, `didUpdateWorkoutZone`)
+- [ ] Menopausal state samples saved as point-in-time entries (identical start
+      and end dates) with `HKCategoryValueMenopausalState` values
 - [ ] Delete operations target only objects the app previously saved
 
 ## References
@@ -436,6 +489,11 @@ HKUnit.literUnit(with: .deci)               // Deciliters
 - [HKStatisticsCollectionQueryDescriptor](https://sosumi.ai/documentation/healthkit/hkstatisticscollectionquerydescriptor)
 - [HKWorkoutSession](https://sosumi.ai/documentation/healthkit/hkworkoutsession)
 - [HKLiveWorkoutBuilder](https://sosumi.ai/documentation/healthkit/hkliveworkoutbuilder)
+- [HKWorkoutZoneGroup](https://sosumi.ai/documentation/healthkit/hkworkoutzonegroup)
+- [preferredWorkoutZoneConfiguration(for:)](https://sosumi.ai/documentation/healthkit/hkhealthstore/preferredworkoutzoneconfiguration(for:))
+- [earliestAuthorizedSampleDate(for:)](https://sosumi.ai/documentation/healthkit/hkhealthstore/earliestauthorizedsampledate(for:))
+- [Recording and querying menopausal state](https://sosumi.ai/documentation/healthkit/recording-and-querying-menopausal-state)
+- [Deliver workout insights with HealthKit workout zones (WWDC26)](https://sosumi.ai/videos/play/wwdc2026/207/)
 - [Setting up HealthKit](https://sosumi.ai/documentation/healthkit/setting-up-healthkit)
 - [Authorizing access to health data](https://sosumi.ai/documentation/healthkit/authorizing-access-to-health-data)
 - [Configuring HealthKit access](https://sosumi.ai/documentation/xcode/configuring-healthkit-access)

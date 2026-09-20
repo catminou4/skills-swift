@@ -1,6 +1,6 @@
 ---
 name: passkit
-description: "Integrate Apple Pay payments and Wallet passes using PassKit. Use when adding Apple Pay buttons, creating payment requests, handling payment authorization, adding passes to Wallet, configuring merchant capabilities, managing shipping/contact fields, or working with PKPaymentRequest, PKPaymentAuthorizationController, PKPaymentButton, AddPassToWalletButton, PKPass, PKAddPassesViewController, PKPassLibrary, Wallet pass distribution, or Apple Pay checkout flows for physical goods, real-world services, donations, and eligible recurring payments."
+description: "Integrate Apple Pay payments and Wallet passes using PassKit. Use when adding Apple Pay buttons, creating payment requests, handling payment authorization, adding passes to Wallet, configuring merchant capabilities, managing shipping/contact fields, or working with PKPaymentRequest, PKPaymentAuthorizationController, PKPaymentButton, AddPassToWalletButton, PKPass, PKAddPassesViewController, PKPassLibrary, Wallet pass distribution, iOS 27+ Poster Generic passes or featured actions, or Apple Pay checkout flows for physical goods, real-world services, donations, and eligible recurring payments."
 ---
 
 # PassKit
@@ -310,6 +310,35 @@ struct AddPassButton: View {
 }
 ```
 
+### iOS 27 Pass Features
+
+iOS 27 / watchOS 27 add three pass.json surfaces, all authored server-side and
+ignored by older OS versions:
+
+- `posterGeneric`: a new pass style rendered as a full-bleed background image
+  with a primary logo, header fields, up to four `primaryFields`, footer
+  fields, `backFields`, `additionalInfoFields`, and a barcode. Keep a legacy
+  style key (`generic`, `storeCard`, `coupon`, `eventTicket`,
+  `boardingPass`) alongside so iOS 26 and earlier devices still render the
+  pass; Wallet prefers `posterGeneric` when both are present.
+- New barcode formats `PKBarcodeFormatCode39`, `PKBarcodeFormatCodabar`,
+  `PKBarcodeFormatEAN13`, and `PKBarcodeFormatI2of5` join QR, PDF417, Aztec,
+  and Code128. List `barcodes` in priority order — iOS 27 uses the first
+  displayable entry while pre-iOS 27 devices fall back to the first format
+  they support. A pass containing only new-format barcodes shows no barcode on
+  older OS versions, so keep a prominent credential-ID field and staff
+  manual-entry fallback.
+- `featuredActions`: up to two action objects (unique identifier, action type,
+  and a URL or other value, listed in priority order) rendered below the pass
+  face for any pass style.
+
+Apple also ships new pass tooling: **Pass Designer**, a Mac app for visual pass
+layout saved as `.pkpasstemplate`, and **Pass Builder**, a Swift-on-Server
+package with a `buildpass` CLI (macOS and Linux) for generating and updating
+passes at scale. See
+[references/wallet-passes.md](references/wallet-passes.md) for field-level
+examples.
+
 ## Checking Pass Library
 
 Use `PKPassLibrary` to inspect and manage passes the user already has. Check
@@ -342,6 +371,14 @@ Apple Pay (PassKit) is for **physical goods, real-world services, donations, and
 eligible recurring payments**. StoreKit is for virtual goods, app features, and
 digital-content subscriptions. Using the wrong framework leads to App Review
 rejection.
+
+### DON'T: Ship iOS 27 pass features without legacy fallbacks
+
+Devices on iOS 26 and earlier ignore `posterGeneric` and the new barcode
+formats. A pass whose only style key is `posterGeneric`, or whose `barcodes`
+array contains only Code 39 / Codabar / EAN-13 / I2of5 entries, loses its
+rendered layout or barcode on those devices. Ship a legacy style key and at
+least one QR/PDF417/Aztec/Code128 barcode, ordered after the newer formats.
 
 ### DON'T: Hardcode merchant ID in multiple places
 
@@ -381,6 +418,9 @@ enum PaymentConfig {
 - [ ] `PKPassLibrary.isPassLibraryAvailable()` used for pass operations, not add-pass capability
 - [ ] `PKAddPassesViewController.canAddPasses()` checked before add-pass UI
 - [ ] `PKPassLibrary.replacePass(with:)` Boolean result checked when replacing a pass
+- [ ] iOS 27+ `posterGeneric` passes ship a legacy style key (`generic`, etc.) for iOS 26 and earlier
+- [ ] `barcodes` array ordered by priority with a QR/PDF417/Aztec/Code128 fallback for pre-iOS 27 devices
+- [ ] `featuredActions` limited to two entries in priority order
 - [ ] Apple Pay button uses system-provided `PKPaymentButton` or `PayWithApplePayButton`
 - [ ] Add-to-Wallet UI uses system-provided `PKAddPassButton`, `AddPassToWalletButton`, or `PKAddPassesViewController`
 - [ ] Error states handled in authorization result (network failures, declined cards)
@@ -394,6 +434,10 @@ enum PaymentConfig {
 - [PKPaymentButton](https://sosumi.ai/documentation/passkit/pkpaymentbutton)
 - [PayWithApplePayButton](https://sosumi.ai/documentation/passkit/paywithapplepaybutton)
 - [AddPassToWalletButton](https://sosumi.ai/documentation/passkit/addpasstowalletbutton)
+- [Pass (Wallet pass format)](https://sosumi.ai/documentation/walletpasses/pass)
+- [Pass.Barcodes](https://sosumi.ai/documentation/walletpasses/pass/barcodes-data.dictionary)
+- [Creating a poster generic pass](https://sosumi.ai/documentation/walletpasses/creating-a-poster-generic-pass)
+- [What's new in Wallet and Apple Pay (WWDC26)](https://sosumi.ai/videos/play/wwdc2026/209/)
 - [PKPass](https://sosumi.ai/documentation/passkit/pkpass)
 - [PKAddPassesViewController](https://sosumi.ai/documentation/passkit/pkaddpassesviewcontroller)
 - [PKPassLibrary](https://sosumi.ai/documentation/passkit/pkpasslibrary)

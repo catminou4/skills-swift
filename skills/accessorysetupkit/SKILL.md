@@ -286,6 +286,11 @@ Key points:
 - No `NSBluetoothAlwaysUsageDescription` is needed when using AccessorySetupKit
   exclusively
 
+On iOS 27+, AccessorySetupKit pairing is also the gate for Bluetooth Channel
+Sounding distance measurement: the system denies
+`peripheral.startChannelSoundingSession(_:)` on peripherals not paired through
+the picker.
+
 ## Wi-Fi Accessories
 
 For Wi-Fi accessories, the `ssid` on the `ASAccessory` identifies the network.

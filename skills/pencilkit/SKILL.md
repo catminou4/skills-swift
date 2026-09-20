@@ -1,6 +1,6 @@
 ---
 name: pencilkit
-description: "Add Apple Pencil drawing with PKCanvasView, PKToolPicker, PKDrawing serialization/export, stroke inspection, and PencilKit/PaperKit handoffs. Use when building drawing apps, annotation features, handwriting capture, signature fields, content-version-safe ink workflows, or Apple Pencil-powered experiences on iOS/iPadOS/visionOS."
+description: "Add Apple Pencil drawing with PKCanvasView, PKToolPicker, PKDrawing serialization/export, stroke inspection, and PencilKit/PaperKit handoffs. Use when building drawing apps, annotation features, handwriting capture, signature fields, content-version-safe ink workflows, iOS 27+ handwriting recognition/search with PKStrokeRecognizer, programmatic stroke selection, slicing, and erasing, stroke-path to Bezier conversion, or Apple Pencil-powered experiences on iOS/iPadOS/visionOS."
 ---
 
 # PencilKit
@@ -18,6 +18,7 @@ tools with `PKToolPicker`, serialize drawings with `PKDrawing`, and wrap PencilK
 - [Content Version Compatibility](#content-version-compatibility)
 - [Exporting to Image](#exporting-to-image)
 - [Stroke Inspection](#stroke-inspection)
+- [Handwriting Recognition (iOS 27+)](#handwriting-recognition-ios-27)
 - [SwiftUI Integration](#swiftui-integration)
 - [PaperKit Relationship](#paperkit-relationship)
 - [Common Mistakes](#common-mistakes)
@@ -243,9 +244,14 @@ case .version3, .version4:
     // Later features such as barrel-roll data and Reed Pen
     syncEditableOnlyToCurrentClients(drawing)
 @unknown default:
+    // Covers .version5 (iOS 27+) on newer SDKs; requires availability to name it
     showReadOnlyPreview(for: drawing)
 }
 ```
+
+`PKContentVersion.version5` is new in iOS 27. Drawings that carry iOS 27 stroke
+metadata (stable stroke IDs, render state) report it as their
+`requiredContentVersion`.
 
 If a drawing requires a newer version than a recipient can load, preserve the
 full-fidelity `PKDrawing` for capable clients and provide a read-only preview or
@@ -294,6 +300,52 @@ for stroke in drawing.strokes {
 Load [Constructing Strokes Programmatically](references/pencilkit-patterns.md#constructing-strokes-programmatically)
 only for generated ink paths; ordinary drawing and inspection do not need the
 advanced constructors.
+
+### iOS 27 Stroke APIs
+
+iOS 27 adds identity, selection, erasing, slicing, and Bezier conversion:
+
+- `PKStroke` and `PKStrokePath` conform to `Identifiable`; `stroke.id` /
+  `path.id` are stable across transforms, edits, and undo.
+- `canvasView.selection` (a `Set<UUID>` of stroke IDs) reads or sets the lasso
+  selection; implement `canvasViewSelectionDidChange(_:)` to observe it.
+- `drawing.erasePath(_:mask:transform:)` erases along a `PKStrokePath` in place;
+  `erasingPath(_:mask:transform:)` returns a copy. Erasure splits strokes into
+  masked substrokes and is expensive on large drawings.
+- `stroke.substroke(range:)` and `path[range]` extract `ClosedRange<CGFloat>`
+  parametric ranges while preserving ink particle consistency.
+- `path.bezierRepresentation` yields a `CGPath`; `PKStrokePath(bezierPath:
+  creationDate:pointProvider:)` rebuilds a path from Bezier curves (supply
+  size/force/opacity per converted point; only the first subpath converts).
+- `stroke.renderGroupID` groups strokes for wet-ink compositing with compatible
+  inks, and `stroke.renderState` (`PKStroke.RenderState`, bridged as
+  `PKStrokeRenderStateReference`) preserves grain positioning on substrokes.
+- `PKStrokePoint` gains `lateralJitter` for particle jitter on supported inks.
+
+## Handwriting Recognition (iOS 27)
+
+`PKStrokeRecognizer` is a Swift actor that recognizes handwritten text in a
+`PKDrawing`, entirely on-device:
+
+```swift
+let recognizer = PKStrokeRecognizer(preferredLanguages: [.init(languageCode: .english)])
+await recognizer.updateDrawing(canvasView.drawing)
+
+let text = await recognizer.recognizedText()            // best result, or per stroke IDs
+let indexable = await recognizer.indexableContent       // optional String, for Spotlight
+let hits = await recognizer.search("alchemy")           // [SearchResult] with bounds + strokes
+```
+
+- `supportedLanguages` lists the 29 recognition languages; `recognitionVersion`
+  identifies the model version so indexes can be rebuilt when it changes.
+- `search(_:fullWordsOnly:caseMatchingOnly:)` returns result bounds that pair
+  with `UIFindInteraction`/`UIFindInteractionDelegate` for Find-in-drawing UI.
+- Throttle recognition calls; do not update the recognizer on every stroke
+  event.
+- In Simulator, recognition covers only Latin-character languages.
+
+Load [Handwriting Recognition](references/pencilkit-patterns.md#handwriting-recognition-ios-27)
+for indexing and search recipes.
 
 ## SwiftUI Integration
 
@@ -380,7 +432,8 @@ drawing.
 
 PaperKit uses PencilKit under the hood: `PaperMarkupViewController` accepts
 `PKTool` for its `drawingTool` property, and `PaperMarkup` can append a
-`PKDrawing`.
+`PKDrawing`. The iOS 27 stroke APIs (identity, selection, erasing, slicing,
+Bezier conversion, `PKStrokeRecognizer`) are also available through PaperKit.
 
 ## Common Mistakes
 
@@ -454,5 +507,10 @@ if drawing1 == drawing2 { }
 - [PKToolPicker](https://sosumi.ai/documentation/pencilkit/pktoolpicker)
 - [PKInkingTool](https://sosumi.ai/documentation/pencilkit/pkinkingtool-swift.struct)
 - [PKStroke](https://sosumi.ai/documentation/pencilkit/pkstroke-swift.struct)
+- [PKStrokeRecognizer](https://sosumi.ai/documentation/pencilkit/pkstrokerecognizer)
+- [PKCanvasView.selection](https://sosumi.ai/documentation/pencilkit/pkcanvasview/selection)
+- [PKContentVersion.version5](https://sosumi.ai/documentation/pencilkit/pkcontentversion/version5)
+- [PKDrawing.erasingPath(_:mask:transform:)](https://sosumi.ai/documentation/pencilkit/pkdrawing-swift.struct/erasingpath(_:mask:transform:)-2txi7)
+- [PKStrokePath.bezierRepresentation](https://sosumi.ai/documentation/pencilkit/pkstrokepath-swift.struct/bezierrepresentation)
 - [Drawing with PencilKit](https://sosumi.ai/documentation/pencilkit/drawing-with-pencilkit)
 - [Configuring the PencilKit tool picker](https://sosumi.ai/documentation/pencilkit/configuring-the-pencilkit-tool-picker)

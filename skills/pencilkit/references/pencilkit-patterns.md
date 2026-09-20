@@ -13,6 +13,8 @@ that exceed the main skill file's scope.
 - [Drawing Comparison and Scoring](#drawing-comparison-and-scoring)
 - [Constructing Strokes Programmatically](#constructing-strokes-programmatically)
 - [Content Version Management](#content-version-management)
+- [Stroke Slicing and Erasing (iOS 27+)](#stroke-slicing-and-erasing-ios-27)
+- [Handwriting Recognition (iOS 27+)](#handwriting-recognition-ios-27)
 - [Advanced SwiftUI Wrapper](#advanced-swiftui-wrapper)
 
 ## Tool Picker Observer Pattern
@@ -258,6 +260,7 @@ case .version4:
     // Reed pen
     break
 @unknown default:
+    // .version5 (iOS 27+): stable stroke IDs, render state, selection metadata
     break
 }
 
@@ -299,6 +302,76 @@ func version1Fallback(from drawing: PKDrawing) -> PKDrawing {
     return PKDrawing(strokes: strokes)
 }
 ```
+
+iOS 27 adds `PKContentVersion.version5` for stroke identity, selection, and
+render-state metadata. Name it only behind `if #available(iOS 27.0, *)`; in a
+plain `switch`, `.version5` arrives through `@unknown default` on apps built
+with the iOS 27 SDK but deployed to earlier versions.
+
+## Stroke Slicing and Erasing (iOS 27+)
+
+`PKStroke` and `PKStrokePath` support `ClosedRange<CGFloat>` parametric-range
+operations on iOS 27. The range counts interpolated positions along the path —
+`0.0...0.5` covers the first half of the stroke by length, not by index.
+
+```swift
+let firstHalf = stroke.substroke(range: 0.0...0.5)      // PKStroke
+let tailPath = path[2.0...4.0]                          // PKStrokePath
+```
+
+Parametric slicing preserves ink-particle consistency, so sliced strokes render
+identically to the original at the same positions. Use `stroke.renderState`
+(`PKStroke.RenderState`) to carry grain positioning between a stroke and its
+substrokes.
+
+Erasing runs on the whole drawing and splits affected strokes:
+
+```swift
+var drawing = canvasView.drawing
+drawing.erasePath(erasePath)                 // in place
+// or
+let erased = drawing.erasingPath(erasePath)  // copy-on-write variant
+```
+
+`mask` and `transform` parameters constrain the erase region. Erasure is
+expensive on large drawings — batch it rather than calling it per pan event.
+Strokes report `renderGroupID` for wet-ink compositing with compatible inks.
+
+`path.bezierRepresentation` converts a path to `CGPath`; rebuild with
+`PKStrokePath(bezierPath:creationDate:pointProvider:)`, where the point provider
+maps each `ConvertedBezierPoint` to a `PKStrokePoint` (supply size, force,
+opacity). Conversion samples multiple `PKStrokePoint`s per Bezier element and
+only handles the first subpath.
+
+## Handwriting Recognition (iOS 27+)
+
+`PKStrokeRecognizer` (a Swift actor) recognizes handwriting on-device. Group it
+into batches rather than updating on every `canvasViewDrawingDidChange`:
+
+```swift
+actor DrawingSearchEngine {
+    private let recognizer = PKStrokeRecognizer()
+
+    func update(_ drawing: PKDrawing) async {
+        await recognizer.updateDrawing(drawing)
+    }
+
+    func find(_ query: String) async -> [CGRect] {
+        let results = await recognizer.search(query)
+        return results.map(\.bounds)
+    }
+}
+```
+
+- `recognizedText()` returns the best candidate; pass stroke IDs to restrict to
+  a lasso selection (`canvasView.selection`, a `Set<UUID>`).
+- `indexableContent` concatenates all candidates — suitable for Spotlight
+  indexing via `CSSearchableItemAttributeSet`.
+- `SearchResult` exposes `bounds` (drawing-space `CGRect` for highlighting) and
+  `strokes` (matching `PKStroke` values for re-selection).
+- Recheck `recognitionVersion` after OS updates; rebuild indexes when it
+  changes.
+- Simulator supports Latin-character languages only; test CJK on device.
 
 ## Advanced SwiftUI Wrapper
 

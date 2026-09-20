@@ -1,6 +1,6 @@
 ---
 name: sensorkit
-description: "Access research-grade sensor data using SensorKit for approved studies. Use when an app needs SensorKit entitlement setup, Research Sensor & Usage Data authorization, ambient light, recorded motion, device usage, keyboard metrics, visits, speech, face, wrist temperature, ECG, PPG, acoustic settings, or sleep-session data. Route ordinary motion to CoreMotion and health records/workouts to HealthKit."
+description: "Access research-grade sensor data using SensorKit for approved studies. Use when an app needs SensorKit entitlement setup, Research Sensor & Usage Data authorization, ambient light, recorded motion, device usage, keyboard metrics, visits, speech, face, wrist temperature, ECG, PPG, acoustic settings, sleep-session data, or iOS 27+ headphone motion and headphone settings streams through the typed SRReader API. Route ordinary motion to CoreMotion and health records/workouts to HealthKit."
 ---
 
 # SensorKit
@@ -17,6 +17,7 @@ records and workouts.
 - [Authorization](#authorization)
 - [Available Sensors](#available-sensors)
 - [SRSensorReader](#srsensorreader)
+- [SRReader (iOS 27+)](#srreader-ios-27)
 - [Recording and Fetching Data](#recording-and-fetching-data)
 - [SRDevice](#srdevice)
 - [Common Mistakes](#common-mistakes)
@@ -159,7 +160,9 @@ and recheck the selected sensor's availability and usage-detail key.
 ## SRSensorReader
 
 `SRSensorReader` is the central class for accessing sensor data. Each instance
-reads from a single sensor.
+reads from a single sensor. On iOS 26 and earlier it is the only reader API;
+in the iOS 27 SDK, `SRSensorReader` and `SRSensorReaderDelegate` are deprecated
+in Swift in favor of the type-safe `SRReader` below.
 
 ```swift
 import SensorKit
@@ -177,6 +180,40 @@ The reader communicates through `SRSensorReaderDelegate`. Load the
 [Delegate Method Catalog](references/sensorkit-patterns.md#delegate-method-catalog)
 when wiring the complete authorization, recording, device-fetch, and
 sample-fetch lifecycle.
+
+## SRReader (iOS 27)
+
+`SRReader` is the iOS 27+ Swift-native replacement for `SRSensorReader`. It is
+generic over an `SRDataSensor`-conforming sensor type, returns typed
+`SRFetchResponse` values through async sequences, and drops the delegate
+protocol entirely.
+
+```swift
+import SensorKit
+
+let reader = try SRReader(sensor: .ambientLight)  // throws on unsupported hardware
+
+// authorizationStatus is observable and updates when the user changes
+// Research Sensor & Usage Data permissions in Settings
+
+try await reader.startRecording()
+
+let request = SRFetchRequest()
+request.from = SRAbsoluteTime(CFAbsoluteTimeGetCurrent() - 86400 * 2)
+request.to = SRAbsoluteTime.current()
+
+for try await response in reader.samples(matching: request) {
+    // response.sample is the sensor's typed Sample; no casting required
+    // response.timestamp; response.sourceDevice (iOS 27) identifies the
+    // peripheral that supplied the data
+}
+```
+
+`SRReader` also exposes `devices`, `deletionRecords(matching:)`, and
+`stopRecording() async throws`. New iOS 27 sensors are `headphoneMotion`
+(samples arrive as `[CMRecordedDeviceMotion]`) and `headphoneSettings`
+(`SRHeadphoneSettings` -- listening mode, adaptive audio strength, hearing
+assistance, personalized volume).
 
 ## Recording and Fetching Data
 
@@ -258,6 +295,11 @@ func sensorReader(
 Cast `result.sample` to the sample shape for the reader's sensor. Some streams
 return one object per result, while recorded motion, ECG, PPG, and ambient
 pressure streams can return arrays of recorded samples.
+
+On iOS 27+, `result.sourceDevice` is a nullable `SRSourceDevice` identifying the
+peripheral that supplied the data (`localIdentifier`, `manufacturer`, `model`,
+`hardwareVersion`, `firmwareVersion`) — useful when several peripherals share
+one `SRDevice`.
 
 ### Data Holding Period
 
@@ -354,12 +396,18 @@ for the complete switch and callback wiring.
 - [ ] `fetchDevices()` used to discover available devices before fetching
 - [ ] `stopRecording()` called when data collection is complete
 - [ ] `sensorReader(_:fetching:didFetchResult:)` returns `true` to continue or `false` to stop
+- [ ] On iOS 27+, new code prefers `SRReader` over the deprecated `SRSensorReader` delegate flow
 
 ## References
 
 - Extended patterns (delegate wiring, multi-sensor manager, sample type details): [references/sensorkit-patterns.md](references/sensorkit-patterns.md)
 - [SensorKit framework](https://sosumi.ai/documentation/sensorkit)
 - [SRSensorReader](https://sosumi.ai/documentation/sensorkit/srsensorreader)
+- [SRReader](https://sosumi.ai/documentation/sensorkit/srreader)
+- [SRDataSensor](https://sosumi.ai/documentation/sensorkit/srdatasensor)
+- [SRFetchResponse](https://sosumi.ai/documentation/sensorkit/srfetchresponse)
+- [SRHeadphoneSettings](https://sosumi.ai/documentation/sensorkit/srheadphonesettings)
+- [SRSourceDevice](https://sosumi.ai/documentation/sensorkit/srsourcedevice)
 - [SRSensor](https://sosumi.ai/documentation/sensorkit/srsensor)
 - [SRDevice](https://sosumi.ai/documentation/sensorkit/srdevice)
 - [SRFetchRequest](https://sosumi.ai/documentation/sensorkit/srfetchrequest)

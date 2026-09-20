@@ -11,6 +11,7 @@ Overflow reference for the `realitykit` skill. Contains advanced patterns that e
 - [Occlusion and Environment](#occlusion-and-environment)
 - [RealityKit + SwiftUI Integration](#realitykit--swiftui-integration)
 - [Performance Tips](#performance-tips)
+- [iOS 27 Additions](#ios-27-additions)
 
 ## Physics Simulation
 
@@ -478,3 +479,56 @@ final class EntityPool {
 - Use `ModelEntity(named:in:)` with a specific bundle to control resource loading
 - Monitor memory with Instruments (RealityKit Trace template)
 - Set `entity.isEnabled = false` instead of removing entities you will reuse
+
+## iOS 27 Additions
+
+### Soft spot-light shadows
+
+`SpotLightComponent.Shadow` gains `lightSize` (radius in meters; `0` keeps hard
+shadows). Soft shadows only render at `quality` `.medium` or `.high`:
+
+```swift
+if var light = entity.components[SpotLightComponent.self] {
+    light.shadow.quality = .high
+    light.shadow.lightSize = 0.25
+    entity.components.set(light)
+}
+```
+
+`SpotLightComponent.ProjectiveTexture` projects a texture from the light, and
+`LightmapComponent(resource:)` bakes precomputed indirect/AO lighting onto
+entities (`LightmapComponent.SurfaceExtractor` helps generate the resource).
+`SpotLightComponent.SurroundingsLight` matches virtual lighting to the physical
+room — visionOS and macOS only, not iOS.
+
+### Navigation meshes
+
+```swift
+agent.components.set(NavigationComponent())  // optional layer and filter args
+let controller = NavigationController(entity: agent)
+controller.requestPath(to: targetPosition)
+// Poll controller.pathfindStatus / controller.currentPath, or
+// controller.computePath(to:) for an off-thread path query.
+```
+
+`NavigationMeshResource` bakes walkable geometry from the scene; agents keep a
+`NavigationComponent` (`layer`, `filter`) describing which mesh regions they can
+traverse.
+
+### Cloth simulation
+
+`ClothBodyComponent(mesh:meshDraping:)` turns an entity's mesh into simulated
+cloth; `ClothColliderComponent` marks entities it collides with. Tune `mass`,
+`motionTypes` (pinned/free particles), `externalForces`, `inflationConstraint`,
+and `targetShapes`; call `resetDeformation(entity:)` to re-drape. iOS, iPadOS,
+and visionOS only.
+
+### Reverb meshes and Gaussian splats
+
+`ReverbMeshResource` creates acoustic geometry — `shoebox(size:)`, `box(size:)`,
+`plane(width:depth:)`, or `init(positions:triangleIndices:materials:)` for
+custom meshes — for spatial-audio rendering.
+
+`GaussianSplatResource` + `GaussianSplatComponent` render captured radiance
+fields. Documented for iOS 27 but flagged as a later release in the iOS 27 SDK
+release notes — verify availability on the running system before enabling.

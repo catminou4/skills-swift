@@ -1,6 +1,6 @@
 ---
 name: core-motion
-description: "Access Core Motion accelerometer, gyroscope, magnetometer, device-motion, pedometer, activity-recognition, altitude, headphone motion, batched high-frequency workout motion, and water-submersion/depth data. Use when reading device sensors, counting steps, detecting walking/running/driving/cycling, tracking altitude, building motion interactions, handling AirPods head tracking, or implementing watchOS dive/depth features."
+description: "Access Core Motion accelerometer, gyroscope, magnetometer, device-motion, pedometer, activity-recognition, altitude, headphone motion, batched high-frequency workout motion, iOS 27+ recorded device-motion history and heading accuracy, and water-submersion/depth data. Use when reading device sensors, counting steps, detecting walking/running/driving/cycling, tracking altitude, building motion interactions, handling AirPods head tracking, or implementing watchOS dive/depth features."
 ---
 
 # CoreMotion
@@ -152,6 +152,12 @@ motionManager.startDeviceMotionUpdates(
 
 motionManager.stopDeviceMotionUpdates()
 ```
+
+On iOS 27+, `motion.headingAccuracy` reports the maximum deviation (in degrees)
+of the estimated heading; a negative value means the heading is invalid. To
+reference device motion from a specific body instead of the device frame, assign
+a `CMBodyIdentifiable`-conforming object to `motionManager.deviceMotionBody`
+(iOS 27+, watchOS 27+, visionOS 27+).
 
 ### Attitude Reference Frames
 
@@ -369,6 +375,9 @@ if activity.walking && activity.confidence == .high {
 - Extended patterns (SwiftUI integration, batched sensor manager, headphone motion, water submersion): [references/motion-patterns.md](references/motion-patterns.md)
 - [CoreMotion framework](https://sosumi.ai/documentation/coremotion)
 - [CMMotionManager](https://sosumi.ai/documentation/coremotion/cmmotionmanager)
+- [CMRecordedDeviceMotion](https://sosumi.ai/documentation/coremotion/cmrecordeddevicemotion)
+- [CMDeviceMotion.headingAccuracy](https://sosumi.ai/documentation/coremotion/cmdevicemotion/headingaccuracy)
+- [CMMotionManager.deviceMotionBody](https://sosumi.ai/documentation/coremotion/cmmotionmanager/devicemotionbody)
 - [CMPedometer](https://sosumi.ai/documentation/coremotion/cmpedometer)
 - [CMMotionActivityManager](https://sosumi.ai/documentation/coremotion/cmmotionactivitymanager)
 - [CMDeviceMotion](https://sosumi.ai/documentation/coremotion/cmdevicemotion)

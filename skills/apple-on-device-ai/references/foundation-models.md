@@ -1,9 +1,9 @@
 # Foundation Models API Reference
 
-Complete reference for Apple's Foundation Models framework (iOS 26+ / macOS 26+).
-On-device language model optimized for Apple Silicon. No app-managed API key,
-model hosting, or network round trip for generation; still handle Apple
-Intelligence and system model asset availability.
+Complete reference for Apple's Foundation Models framework (iOS 26+ / macOS 26+;
+iOS 27 additions are tagged). On-device language model optimized for Apple
+Silicon. No app-managed API key, model hosting, or network round trip for
+generation; still handle Apple Intelligence and system model asset availability.
 
 ## Contents
 
@@ -11,7 +11,10 @@ Intelligence and system model asset availability.
 - [Availability Checking](#availability-checking)
 - [Use Cases](#use-cases)
 - [Session Management](#session-management)
+- [Choosing a Model (iOS 27+)](#choosing-a-model-ios-27)
+- [Dynamic Profiles (iOS 27+)](#dynamic-profiles-ios-27)
 - [Generating Responses](#generating-responses)
+- [Multimodal Prompts (iOS 27+)](#multimodal-prompts-ios-27)
 - [Structured Output with `@Generable`](#structured-output-with-generable)
 - [Tool Calling](#tool-calling)
 - [Error Handling](#error-handling)
@@ -19,6 +22,7 @@ Intelligence and system model asset availability.
 - [Safety and Guardrails](#safety-and-guardrails)
 - [Custom Adapters](#custom-adapters)
 - [Context Management](#context-management)
+- [Token Usage (iOS 27+)](#token-usage-ios-27)
 - [Serialized Model Access](#serialized-model-access)
 - [Prompt Design Best Practices](#prompt-design-best-practices)
 - [Feedback](#feedback)
@@ -33,6 +37,20 @@ Intelligence and system model asset availability.
 - Capabilities: Summarization, entity extraction, text understanding, short
   dialog, creative content, content tagging
 - Limitations: Not suited for complex math, code generation, or factual accuracy
+
+iOS 27 changes the framework's shape:
+
+- Rebuilt on-device model with better logic and tool calling, plus refined
+  guardrails; prompt for the model version the device ships (see
+  `Updating prompts for new model versions` in the docs).
+- `LanguageModel` protocol opens sessions to Private Cloud Compute, Core AI,
+  MLX, and third-party provider models.
+- Multimodal image attachments, dynamic profiles, token-usage reporting, and
+  system-provided tools (`OCRTool`, `BarcodeReaderTool` in Vision; a
+  Spotlight-backed search tool).
+- The framework core and a "Foundation Models framework utilities" package are
+  open source; the new Evaluations framework tests model features, and macOS 27
+  adds the `fm` CLI and `apple_fm_sdk` Python package.
 
 ### SystemLanguageModel Properties
 
@@ -110,6 +128,9 @@ let model = SystemLanguageModel(useCase: .general, guardrails: .default)
 let session = LanguageModelSession(model: model, tools: []) {
     "You are a helpful assistant."
 }
+
+// Session with the Private Cloud Compute model (iOS 27+)
+let session = LanguageModelSession(model: PrivateCloudComputeLanguageModel())
 ```
 
 ### Session Rules
@@ -131,6 +152,75 @@ session.prewarm()
 // Prewarm with a prompt prefix for faster specific responses
 session.prewarm(promptPrefix: Prompt("Summarize the following text:"))
 ```
+
+## Choosing a Model (iOS 27+)
+
+`LanguageModelSession(model:)` accepts any type conforming to the new
+`LanguageModel` protocol, not just `SystemLanguageModel`.
+
+```swift
+// On-device model (default)
+let session = LanguageModelSession(model: SystemLanguageModel.default)
+
+// Private Cloud Compute model — the server model behind Apple Intelligence
+let pccModel = PrivateCloudComputeLanguageModel()
+switch pccModel.availability {
+case .available:
+    let session = LanguageModelSession(model: pccModel)
+    // Deep reasoning costs extra compute; .light is cheaper
+    let response = try await session.respond(
+        to: prompt,
+        contextOptions: ContextOptions(reasoningLevel: .deep)
+    )
+default:
+    break // Fall back to the on-device model
+}
+```
+
+Private Cloud Compute specifics:
+
+- 32,000-token context window and a `reasoningLevel` (`ContextOptions`)
+- Requires the managed entitlement `com.apple.developer.private-cloud-compute`
+- No API keys or account setup; check `quotaUsage` for the usage quota
+- Makes Foundation Models usable on watchOS 27
+- Conforms to `Observable`; `isAvailable` / `availability` gate the session
+
+Open-source `CoreAILanguageModel` and `MLXLanguageModel` adapters let local
+models back a session, and third-party providers ship `LanguageModel` packages
+over Swift Package Manager. Third-party server models authenticate with OAuth
+plus Keychain — never embed private keys in the app binary — and are billed
+per token, so monitor `usage`.
+
+## Dynamic Profiles (iOS 27+)
+
+`LanguageModelSession.DynamicProfile` switches a session between complete
+configurations as app state changes. Conform to the protocol and return a
+`Profile` from `body`; create the session with
+`LanguageModelSession(profile:)`:
+
+```swift
+struct AssistantProfile: LanguageModelSession.DynamicProfile {
+    var body: some DynamicProfile {
+        Profile {
+            Instructions { "You are a concise assistant." }
+            SearchTool()
+        }
+        .model(PrivateCloudComputeLanguageModel())
+        .reasoningLevel(.deep)
+        .toolCallingMode(.automatic)
+        .historyTransform { entries in trimHistory(entries) }
+    }
+}
+
+let session = LanguageModelSession(profile: AssistantProfile())
+```
+
+Profile modifiers include `model`, `temperature`, `samplingMode`,
+`reasoningLevel`, `maximumResponseTokens`, `toolCallingMode`, and
+`historyTransform`; hooks such as `onActivate`, `onDeactivate`, `onPrompt`,
+`onReasoning`, `onResponse`, `onToolCall`, and `onToolOutput` observe the
+lifecycle. A conditional `body` (via `DynamicProfileBuilder`) selects between
+profiles at runtime.
 
 ## Generating Responses
 
@@ -161,6 +251,29 @@ for try await snapshot in stream {
 // Or collect the full response
 let response = try await stream.collect()
 ```
+
+## Multimodal Prompts (iOS 27+)
+
+The on-device model accepts images alongside text. Insert `Attachment` inside a
+`Prompt` or `Instructions` builder; attach a `label(_:)` so the model (and
+tools) can refer to a specific image.
+
+```swift
+let response = try await session.respond {
+    "Describe this image:"
+    Attachment(image)
+        .label("flyer")
+}
+```
+
+- `Attachment` accepts `UIImage`, `NSImage`, `CGImage`, Core Image types,
+  `CVPixelBuffer`, and image file URLs (`init(imageURL:orientation:)`).
+- Any size and aspect ratio works — no cropping or padding — but larger images
+  consume more context tokens and add latency.
+- Give tool arguments image inputs with `ImageReference`: declare
+  `var image: ImageReference` in the tool's `@Generable` `Arguments`, then
+  resolve it during the call with `image.resolved(in: history)` where
+  `history` comes from `@SessionProperty(\.history)`.
 
 ## Structured Output with `@Generable`
 
@@ -347,6 +460,9 @@ let response = try await session.respond(to: "What's the weather in Tokyo?")
 - `includesSchemaInInstructions`: Boolean property on `Tool` (default `true`). Set to `false` to omit the tool's JSON schema from the system prompt, saving context tokens when the model already knows the schema.
 - `ToolCallError`: Struct on `LanguageModelSession` representing a tool invocation failure. Properties: `tool` (the tool name), `underlyingError` (the original error).
 - `DynamicGenerationSchema`: Build generation schemas at runtime for dynamic use cases where compile-time `@Generable` is insufficient. Construct schemas programmatically and pass to `respond(to:schema:)`.
+- iOS 27+ system tools: `OCRTool` and `BarcodeReaderTool` (Vision framework)
+  plus a Spotlight-backed search tool can be passed in the session's `tools:`
+  array like any custom `Tool`.
 
 ## Error Handling
 
@@ -399,10 +515,18 @@ let options = GenerationOptions(
 let options = GenerationOptions(
     sampling: .random(probabilityThreshold: 0.9)
 )
+
+// iOS 27+: control whether the model may call tools
+let options = GenerationOptions(toolCallingMode: .automatic)
 ```
 
 Sampling modes accept an optional `seed` parameter for reproducible output:
 `.random(top: 40, seed: 42)`, `.random(probabilityThreshold: 0.9, seed: 42)`.
+
+`respond(to:)` and `streamResponse(to:)` also take a `contextOptions:`
+parameter (iOS 27+). `ContextOptions(reasoningLevel:)` sets the model's
+reasoning budget (`ContextOptions.ReasoningLevel`), and
+`includeSchemaInPrompt` controls schema injection into the prompt.
 
 ## Safety and Guardrails
 
@@ -460,6 +584,17 @@ When conversations grow long:
 2. Use `SystemLanguageModel.default.tokenCount(for:)` to estimate usage
 3. Summarize earlier turns into new session instructions
 4. Create fresh sessions with summary context rather than overflowing
+
+## Token Usage (iOS 27+)
+
+`session.usage` accumulates usage across the session and each `response.usage`
+reports that turn:
+
+- `usage.input.totalTokenCount` and `usage.input.cachedTokenCount`
+- `usage.output.totalTokenCount` and `usage.output.reasoningTokenCount`
+- `usage.metadata` for provider-reported extras
+
+Use it to budget PCC quotas and per-token billing on third-party models.
 
 ```swift
 if transcript.estimatedTokenCount > 3000 {

@@ -1,12 +1,12 @@
 ---
 name: apple-on-device-ai
-description: "Build private, on-device AI features on iPhone, iPad, and Mac with Foundation Models, Core ML, MLX Swift, or llama.cpp. Use when choosing an Apple-local model runtime, building an Apple Intelligence chatbot or tool-calling feature, running an LLM on Apple Silicon, converting or compressing a Python model for Core ML, or comparing on-device inference backends. For Swift Core ML loading and prediction code, use the coreml skill."
+description: "Build private, on-device AI features on iPhone, iPad, and Mac with Foundation Models, Core AI, Core ML, MLX Swift, or llama.cpp. Use when choosing an Apple-local model runtime, building an Apple Intelligence chatbot, multimodal prompt, or tool-calling feature, running an LLM on Apple Silicon, converting or compressing a Python model for Core ML or Core AI, or comparing on-device inference backends. For Swift Core ML loading and prediction code, use the coreml skill."
 ---
 
 # On-Device AI for Apple Platforms
 
 Guide for selecting, deploying, and optimizing on-device ML models. Covers Apple
-Foundation Models, Core ML, MLX Swift, and llama.cpp.
+Foundation Models, Core AI, Core ML, MLX Swift, and llama.cpp.
 
 ## Contents
 
@@ -35,7 +35,13 @@ handle system model asset readiness.
 - Generating text or structured data with `@Generable` types
 - Summarization, classification, content tagging
 - Tool-augmented generation with the `Tool` protocol
+- Image + text prompts via `Attachment` (iOS 27+)
 - Apps that need guaranteed on-device privacy
+
+On iOS 27+ the model behind a session is configurable through the `LanguageModel`
+protocol: `SystemLanguageModel` on device, `PrivateCloudComputeLanguageModel`
+for the 32K-context server model (managed entitlement, no API keys), or
+third-party/open-source providers via Swift packages.
 
 **Not suited for:** Complex math, code generation, factual accuracy tasks,
 or apps targeting pre-iOS 26 devices.
@@ -52,6 +58,22 @@ with coremltools.
 - Audio/speech models via SoundAnalysis integration
 - Any scenario needing Neural Engine optimization
 - Models requiring quantization, palettization, or pruning
+
+### Core AI (iOS 27+)
+
+**When to use:** Apple's inference framework (the engine behind on-device Apple
+Intelligence) for running generative and strict-latency models packaged as
+`.aimodel` assets. Convert PyTorch exported programs with the `coreai_torch`
+Python package; inspect and profile `.aimodel` files in Xcode.
+
+**Best for:**
+- Generative models under tight latency budgets (LLMs, diffusion)
+- Stateful inference with `NDArray` / `InferenceFunction` / `ComputeStream`
+- Ahead-of-time specialization via `AIModel.specialize` and `AIModelCache`
+- Backing a `LanguageModelSession` with a local model (`CoreAILanguageModel`)
+
+**Not suited for:** Classic predictive models already served by Core ML (Core AI
+coexists with, and does not replace, Core ML), or pre-iOS 27 deployment targets.
 
 ### MLX Swift
 
@@ -80,6 +102,10 @@ deployments needing broad device support.
 |---|---|
 | Text generation on Apple Intelligence devices (iOS 26+) | Foundation Models |
 | Structured output from on-device LLM | Foundation Models (`@Generable`) |
+| Image + text prompts (iOS 27+) | Foundation Models (`Attachment`) |
+| Larger context / reasoning, no API keys (iOS 27+) | Foundation Models (`PrivateCloudComputeLanguageModel`) |
+| Custom local or server model behind `LanguageModelSession` (iOS 27+) | `LanguageModel` conformers (Core AI, MLX, provider packages) |
+| Generative model with strict latency, `.aimodel` asset (iOS 27+) | Core AI |
 | Image classification, object detection | Core ML |
 | Custom model from PyTorch/TensorFlow | Core ML + coremltools |
 | Running specific open-source LLMs | MLX Swift or llama.cpp |
@@ -136,9 +162,15 @@ Required guardrails:
 - Keep untrusted user content in prompts, never instructions. System guardrails
   remain active, so handle refusal and other generation errors with fallback UI.
 
+iOS 27 expands the framework: a rebuilt on-device model, multimodal image
+attachments, the `LanguageModel` provider protocol, a Private Cloud Compute
+model, dynamic profiles for agentic sessions, token-usage reporting, and the
+new Evaluations framework for quality testing.
+
 Load [the Foundation Models reference](references/foundation-models.md) when the
 task needs `@Generable`, `@Guide`, streaming, tool definitions, transcripts,
-generation options, custom adapters, prompt design, or detailed error handling.
+generation options, iOS 27 multimodal or Private Cloud Compute usage, custom
+adapters, prompt design, or detailed error handling.
 
 ## Core ML Overview
 
@@ -303,6 +335,10 @@ unless product explicitly opts into a nonlocal fallback.
 10. **Trusting MLX simulator results.** Validate Metal-dependent behavior on
    physical devices; Simulator is only a UI/control-flow smoke test.
 11. **Not clearing MLX caches.** Pair model unload with `Memory.clearCache()`.
+12. **Assuming Foundation Models only means `SystemLanguageModel`.** On iOS 27+,
+    `LanguageModelSession(model:)` accepts any `LanguageModel` — PCC, Core AI,
+    MLX, or provider packages. Pick the model for the task instead of
+    reimplementing its capabilities around the on-device model.
 
 ## Review Checklist
 
@@ -312,6 +348,7 @@ unless product explicitly opts into a nonlocal fallback.
 - [ ] Foundation Models: session prewarm called before user interaction
 - [ ] Foundation Models: `@Generable` properties in logical generation order
 - [ ] Foundation Models: token budget accounted for (check `contextSize`)
+- [ ] Foundation Models: iOS 27-only APIs (`Attachment`, `PrivateCloudComputeLanguageModel`, `DynamicProfile`, `usage`) gated behind deployment checks, and PCC gated on `PrivateCloudComputeLanguageModel.availability` plus its entitlement
 - [ ] Core ML: model format is mlprogram (.mlpackage) for iOS 15+
 - [ ] Core ML: source/Core ML parity passes fixed fixtures and task tolerances
 - [ ] Core ML: compressed model revalidated and profiled on physical targets
@@ -323,7 +360,7 @@ unless product explicitly opts into a nonlocal fallback.
 
 ## References
 
-- [Foundation Models API](references/foundation-models.md) -- LanguageModelSession, `@Generable`, tool calling, prompt design
+- [Foundation Models API](references/foundation-models.md) -- LanguageModelSession, `@Generable`, tool calling, iOS 27 multimodal/PCC/profile APIs, prompt design
 - [Core ML Conversion](references/coreml-conversion.md) -- Model conversion from PyTorch, TensorFlow, other frameworks
 - [Core ML Optimization](references/coreml-optimization.md) -- Quantization, palettization, pruning, performance tuning
 - [MLX Swift & llama.cpp](references/mlx-swift.md) -- MLX Swift patterns, llama.cpp integration, memory management

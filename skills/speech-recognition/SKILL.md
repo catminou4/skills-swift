@@ -68,6 +68,20 @@ results, or file/buffer examples.
 Do not use an `offlineTranscription` preset; Apple does not document one.
 Finishing an `AsyncStream` input sequence does not finish the analyzer session.
 
+iOS 27+ adds provider types that deliver already-converted
+`AsyncSequence<AnalyzerInput, any Error>` sequences via `analyzerInputs`,
+replacing manual `AVAudioEngine` + `AVAudioConverter` plumbing:
+
+- `CaptureInputSequenceProvider` captures a mic or other `AVCaptureDevice`
+  (`providerWithSession(from:compatibleWith:priority:)` configures a new
+  `AVCaptureSession`; `provider(from:in:compatibleWith:priority:)` uses an
+  existing session). Feed `provider.analyzerInputs` to the analyzer.
+- `AssetInputSequenceProvider` reads a file or `AVAsset` track.
+- `AnalyzerInputConverter` (`converter(compatibleWith:)`, `convert(_:at:)`,
+  `flush()`) converts your own buffer pipeline to an analyzer format.
+- `SpeechAnalyzer.Options` `init(priority:modelRetention:ignoresResourceLimits:)`
+  relaxes predefined system resource limits for long or demanding sessions.
+
 ## SFSpeechRecognizer Setup
 
 ### Creating a recognizer with locale
@@ -332,6 +346,7 @@ Load [references/speechanalyzer-patterns.md](references/speechanalyzer-patterns.
 - [ ] Partial results are handled separately from final (`isFinal`) results
 - [ ] `SFSpeechRecognizer` one-minute/service limits are accounted for
 - [ ] For iOS 26+: `AssetInventory` assets are installed before using `SpeechAnalyzer`
+- [ ] For iOS 27+: capture/file input comes from `CaptureInputSequenceProvider` or `AssetInputSequenceProvider` where possible instead of hand-rolled buffer conversion
 - [ ] For iOS 26+: `SpeechTranscriber.isAvailable` and locale support are checked
 - [ ] For iOS 26+: live buffers are converted to the analyzer-compatible format
 - [ ] For iOS 26+: analyzer sessions are explicitly finalized or canceled
@@ -351,6 +366,9 @@ Load [references/speechanalyzer-patterns.md](references/speechanalyzer-patterns.
 - [SFSpeechRecognitionResult](https://sosumi.ai/documentation/speech/sfspeechrecognitionresult)
 - [SFSpeechRecognitionRequest](https://sosumi.ai/documentation/speech/sfspeechrecognitionrequest)
 - [AssetInventory](https://sosumi.ai/documentation/speech/assetinventory)
+- [CaptureInputSequenceProvider](https://sosumi.ai/documentation/speech/captureinputsequenceprovider) (iOS 27+)
+- [AssetInputSequenceProvider](https://sosumi.ai/documentation/speech/assetinputsequenceprovider) (iOS 27+)
+- [AnalyzerInputConverter](https://sosumi.ai/documentation/speech/analyzerinputconverter) (iOS 27+)
 - [Asking Permission to Use Speech Recognition](https://sosumi.ai/documentation/speech/asking-permission-to-use-speech-recognition)
 - [Recognizing Speech in Live Audio](https://sosumi.ai/documentation/speech/recognizing-speech-in-live-audio)
 - [Bring advanced speech-to-text to your app with SpeechAnalyzer](https://sosumi.ai/videos/play/wwdc2025/277)

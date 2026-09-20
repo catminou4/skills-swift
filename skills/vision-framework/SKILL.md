@@ -1,6 +1,6 @@
 ---
 name: vision-framework
-description: "Implement computer vision features including text recognition (OCR), face detection, barcode scanning, image segmentation, object tracking, and document scanning in iOS apps. Covers both the modern Swift-native Vision API (iOS 18+) and legacy VNRequest patterns, VisionKit DataScannerViewController for live camera scanning, and CoreMLRequest/VNCoreMLRequest for custom model inference. Use when adding OCR, barcode scanning, face detection, or custom Core ML model inference with Vision."
+description: "Implement computer vision features including text recognition (OCR), face detection, barcode scanning, image segmentation, interactive tap-to-segment (iOS 27+), object tracking, and document scanning in iOS apps. Covers both the modern Swift-native Vision API (iOS 18+, watchOS 27+) and legacy VNRequest patterns, VisionKit DataScannerViewController for live camera scanning, CoreMLRequest/VNCoreMLRequest for custom model inference, and Vision's Foundation Models tools (OCRTool, BarcodeReaderTool, iOS 27+). Use when adding OCR, barcode scanning, face detection, or custom Core ML model inference with Vision."
 ---
 
 # Vision Framework
@@ -22,6 +22,7 @@ See [references/vision-requests.md](references/vision-requests.md) for complete 
 - [Image Segmentation](#image-segmentation)
 - [Object Tracking](#object-tracking)
 - [Other Request Types](#other-request-types)
+- [Foundation Models Tools (iOS 27+)](#foundation-models-tools-ios-27)
 - [Core ML Integration](#core-ml-integration)
 - [VisionKit: DataScannerViewController](#visionkit-datascannerviewcontroller)
 - [Common Mistakes](#common-mistakes)
@@ -41,7 +42,7 @@ legacy `CGRect` helpers inside explicit legacy fallback sections or files.
 | Request types | Swift types — structs and classes (`RecognizeTextRequest`, `DetectFaceRectanglesRequest`) | ObjC classes (`VNRecognizeTextRequest`, `VNDetectFaceRectanglesRequest`) |
 | Concurrency | Native async/await | Completion handlers or synchronous `perform` |
 | Observations | Typed return values | Cast `results` from `[Any]` |
-| Availability | iOS 18+ / macOS 15+ | iOS 11+ |
+| Availability | iOS 18+ / macOS 15+ (watchOS 27+) | iOS 11+ |
 
 The modern API uses the `ImageProcessingRequest` protocol. Each request type
 has a `perform(on:orientation:)` method that accepts `CGImage`, `CIImage`,
@@ -254,6 +255,37 @@ for index in indices {
 See [references/vision-requests.md](references/vision-requests.md) for mask composition and Core Image filter
 integration patterns.
 
+### Interactive Segmentation (iOS 27+)
+
+`GenerateIterativeSegmentationRequest` segments any object from a seed — a
+point, a bounding box, or a scribble/lasso stroke — then refines the mask as
+points are added. It is a stateful class performed through
+`ImageRequestHandler`, and its model assets may need downloading first
+(`DownloadableAssetsRequest` protocol).
+
+```swift
+let request = GenerateIterativeSegmentationRequest(seedPoint: normalizedPoint)
+
+// Download the segmentation model if needed
+if request.assetStatus != .ready {
+    try await request.downloadAssets()
+}
+
+let handler = ImageRequestHandler(cgImage)
+var mask = try await handler.perform(request) // PixelBufferObservation?
+
+// Refine: add foreground/background taps, then perform again
+try request.addIncludedPoint(anotherPoint)
+try request.addExcludedPoint(backgroundPoint)
+mask = try await handler.perform(request)
+```
+
+Seed variants: `init(seedPoint:)`, `init(seedBox:)`, `init(seedScribbleBuffer:)`.
+Refinement point budgets: 13 total for point/scribble seeds, 11 for box seeds;
+exceeding the budget throws. `qualityLevel` trades resolution for speed, and a
+lasso stroke should be at least ~1% of image width. Check `assetStatus` before
+performing.
+
 ## Object Tracking
 
 ### Modern: TrackObjectRequest (iOS 18+)
@@ -301,7 +333,27 @@ Vision provides additional requests covered in [references/vision-requests.md](r
 | `TrackOpticalFlowRequest` | Optical flow between video frames |
 | `DetectTrajectoriesRequest` | Detect object trajectories in video |
 
-All modern request types above are iOS 18+ / macOS 15+.
+All modern request types above are iOS 18+ / macOS 15+ (and watchOS 27+).
+
+## Foundation Models Tools (iOS 27+)
+
+Vision provides `Tool`-conforming types for `LanguageModelSession`: `OCRTool`
+extracts text and `BarcodeReaderTool` decodes machine-readable codes from
+image attachments. Neither is available in Simulator.
+
+```swift
+import FoundationModels
+import Vision
+
+let session = LanguageModelSession(tools: [OCRTool(), BarcodeReaderTool()])
+let response = try await session.respond {
+    "Get the date, location, and website from this flyer"
+    Attachment(image).label("flyer")
+}
+```
+
+Override `init(name:description:)` to customize how the model identifies a
+tool. See `apple-on-device-ai` for session, attachment, and tool-calling detail.
 
 ## Core ML Integration
 
@@ -435,6 +487,7 @@ Wrap `DataScannerViewController` in `UIViewControllerRepresentable` and start in
 - [ ] Camera usage description (`NSCameraUsageDescription`) in Info.plist for VisionKit
 - [ ] VisionKit camera access requested before presentation and scanning started after presentation
 - [ ] Person segmentation quality level appropriate for use case
+- [ ] For iOS 27+ `GenerateIterativeSegmentationRequest`: `assetStatus` checked and `downloadAssets()` awaited before `perform`
 - [ ] Stateful tracking request or `VNSequenceRequestHandler` preserved across video frames
 - [ ] Error handling covers request failures and empty results
 

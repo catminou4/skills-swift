@@ -10,6 +10,7 @@ and video processing. All patterns target iOS 26+ with Swift 6.3 unless noted.
 - Barcode Detection with All Symbologies
 - Person Segmentation with Mask Application
 - Instance Segmentation (iOS 18+)
+- Interactive Segmentation (iOS 27+)
 - Image Classification
 - Saliency Detection
 - Rectangle Detection
@@ -17,6 +18,7 @@ and video processing. All patterns target iOS 26+ with Swift 6.3 unless noted.
 - Batch Processing Multiple Requests
 - Video Frame Processing with CMSampleBuffer
 - Object Tracking Across Video Frames
+- Foundation Models Tools (iOS 27+)
 - Coordinate Normalization Utilities
 - Performance Considerations
 
@@ -372,6 +374,53 @@ func segmentIndividualPeopleLegacy(in cgImage: CGImage) throws -> [CVPixelBuffer
 }
 ```
 
+## Interactive Segmentation (iOS 27+)
+
+`GenerateIterativeSegmentationRequest` segments an arbitrary object from a seed
+— a `NormalizedPoint`, a `NormalizedRect` seed box, or a scribble buffer — and
+refines the mask as the user adds include/exclude taps. The request is a
+stateful final class; perform it through `ImageRequestHandler` rather than
+`request.perform(on:)` so refinements accumulate.
+
+```swift
+import Vision
+
+func segmentObject(in cgImage: CGImage, seed: NormalizedPoint) async throws -> CVPixelBuffer? {
+    let request = GenerateIterativeSegmentationRequest(seedPoint: seed)
+    request.qualityLevel = .accurate
+
+    // Conforms to DownloadableAssetsRequest — the segmentation model may
+    // need downloading before the first perform.
+    if request.assetStatus != .ready {
+        try await request.downloadAssets()
+    }
+
+    let handler = ImageRequestHandler(cgImage)
+    let mask = try await handler.perform(request) // PixelBufferObservation?
+    return mask?.pixelBuffer
+}
+
+// Refine iteratively — each added point re-performs the request
+func refine(_ request: GenerateIterativeSegmentationRequest,
+            on handler: ImageRequestHandler,
+            include: NormalizedPoint? = nil,
+            exclude: NormalizedPoint? = nil) async throws -> CVPixelBuffer? {
+    if let include { try request.addIncludedPoint(include) }
+    if let exclude { try request.addExcludedPoint(exclude) }
+    return try await handler.perform(request)?.pixelBuffer
+}
+```
+
+Notes:
+
+- Seed initializers: `init(seedPoint:)`, `init(seedBox:)`,
+  `init(seedScribbleBuffer:)`.
+- Point budget: 13 total added points for point/scribble seeds, 11 for box
+  seeds; exceeding it throws.
+- `assetStatus` cases: `.ready`, `.notReady`, `.downloading`, `.error`.
+  `downloadAssets(progress:)` reports progress through a subprogress.
+- A lasso/scribble stroke should be at least ~1% of the image width.
+
 ## Image Classification
 
 ```swift
@@ -616,6 +665,35 @@ final class LegacyObjectTracker {
     }
 }
 ```
+
+## Foundation Models Tools (iOS 27+)
+
+Vision ships `Tool`-conforming types that a `LanguageModelSession` can call
+against image attachments. `OCRTool` returns recognized text as a string;
+`BarcodeReaderTool` returns `Barcode` results with decoded content and
+symbology. Neither tool is available in Simulator.
+
+```swift
+import FoundationModels
+import Vision
+
+func describeFlyer(_ image: CGImage) async throws -> String {
+    let session = LanguageModelSession(tools: [
+        OCRTool(),
+        BarcodeReaderTool(name: "scanQRCode", description: "Scan QR codes")
+    ])
+    let response = try await session.respond {
+        "Get the date, location, and website from this flyer"
+        Attachment(image).label("flyer")
+    }
+    return response.content
+}
+```
+
+Label attachments so the model can refer to a specific image when it calls
+tools. Custom tools can take an `ImageReference` argument and resolve it from
+the session transcript (`@SessionProperty(\.history)`); see the
+`apple-on-device-ai` skill.
 
 ## Coordinate Normalization Utilities
 

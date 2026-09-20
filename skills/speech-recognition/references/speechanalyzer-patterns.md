@@ -10,6 +10,7 @@ or `AssetInventory`.
 - [Preparing Assets](#preparing-assets)
 - [Transcribing Files](#transcribing-files)
 - [Live Audio](#live-audio)
+- [Input Providers (iOS 27+)](#input-providers-ios-27)
 - [Handling Results](#handling-results)
 - [Finishing Sessions](#finishing-sessions)
 - [References](#references)
@@ -127,6 +128,62 @@ Use `AVAudioConverter` or an existing project audio pipeline for the conversion.
 Do not feed arbitrary input-node formats directly unless they already match a
 compatible analyzer format.
 
+## Input Providers (iOS 27+)
+
+iOS 27 adds providers that hand the analyzer an `AsyncSequence` of
+`AnalyzerInput` objects in a compatible format.
+
+```swift
+import Speech
+import AVFoundation
+
+let transcriber = SpeechTranscriber(
+    locale: locale,
+    preset: .progressiveTranscription
+)
+let analyzer = SpeechAnalyzer(modules: [transcriber])
+
+// Microphone or another capture device: configures and starts a new
+// AVCaptureSession for the given device.
+let provider = try await CaptureInputSequenceProvider.providerWithSession(
+    from: microphone,                    // AVCaptureDevice
+    compatibleWith: [transcriber]
+)
+try await analyzer.start(inputSequence: provider.analyzerInputs)
+```
+
+```swift
+// Recorded file or AVAsset track.
+let asset = AVURLAsset(url: fileURL)
+let fileProvider = try await AssetInputSequenceProvider.provider(
+    from: asset,
+    compatibleWith: [transcriber]
+)
+try await analyzer.start(inputSequence: fileProvider.analyzerInputs)
+```
+
+Keep using `AVAudioEngine` when you need tap-level control; convert buffers
+yourself with `AnalyzerInputConverter`, which returns `[AnalyzerInput]` batches:
+
+```swift
+let converter = try await AnalyzerInputConverter.converter(
+    compatibleWith: [transcriber]
+)
+// In the audio tap:
+for input in try converter.convert(buffer, at: sampleTime) {
+    inputBuilder.yield(input)
+}
+// When the source ends, flush pending conversions:
+for input in try converter.flush() {
+    inputBuilder.yield(input)
+}
+```
+
+`provider.analyzerInputs` terminates when the capture session and provider are
+deallocated. For sessions that must outlive predefined resource limits, create
+the analyzer with `SpeechAnalyzer.Options(priority:modelRetention:ignoresResourceLimits:)`
+(iOS 27+).
+
 ## Handling Results
 
 `SpeechTranscriber.Result.text` is an `AttributedString`. Time-indexed presets
@@ -168,4 +225,7 @@ no longer accept new work. Create a new analyzer for a new finished session.
 - [DictationTranscriber](https://sosumi.ai/documentation/speech/dictationtranscriber)
 - [SpeechDetector](https://sosumi.ai/documentation/speech/speechdetector)
 - [AssetInventory](https://sosumi.ai/documentation/speech/assetinventory)
+- [CaptureInputSequenceProvider](https://sosumi.ai/documentation/speech/captureinputsequenceprovider) (iOS 27+)
+- [AssetInputSequenceProvider](https://sosumi.ai/documentation/speech/assetinputsequenceprovider) (iOS 27+)
+- [AnalyzerInputConverter](https://sosumi.ai/documentation/speech/analyzerinputconverter) (iOS 27+)
 - [WWDC25: Bring advanced speech-to-text to your app with SpeechAnalyzer](https://sosumi.ai/videos/play/wwdc2025/277)

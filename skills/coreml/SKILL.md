@@ -1,6 +1,6 @@
 ---
 name: coreml
-description: "Integrate Core ML models in iOS apps for on-device machine learning inference. Covers model loading (.mlmodel, .mlpackage, .mlmodelc), predictions with auto-generated classes and MLFeatureProvider, compute unit configuration (CPU, GPU, Neural Engine), MLTensor, VNCoreMLRequest, MLComputePlan, multi-model pipelines, and deployment strategies. Use when loading Core ML models, making predictions, configuring compute units, or profiling model performance."
+description: "Integrate Core ML models in iOS apps for on-device machine learning inference. Covers model loading (.mlmodel, .mlpackage, .mlmodelc), predictions with auto-generated classes and MLFeatureProvider, compute unit configuration (CPU, GPU, Neural Engine), MLTensor, VNCoreMLRequest, MLComputePlan, multi-model pipelines, and deployment strategies. Use when loading Core ML models, making predictions, configuring compute units, or profiling model performance. For iOS 27+ generative `.aimodel` inference, see the Core AI coverage in apple-on-device-ai."
 ---
 
 # Core ML Swift Integration
@@ -11,6 +11,12 @@ Swift side: model loading, prediction, MLTensor, profiling, and deployment.
 > **Scope boundary:** Python-side model conversion, optimization (quantization,
 > palettization, pruning), and framework selection live in the `apple-on-device-ai`
 > skill. This skill owns Swift integration only.
+>
+> **iOS 27+:** Core AI is a separate inference framework for generative and
+> strict-latency models packaged as `.aimodel` assets (`AIModel`,
+> `InferenceFunction`, `NDArray`, `ComputeStream`). Core ML is not deprecated;
+> keep using `MLModel` for `.mlmodel` / `.mlpackage` models. See
+> `apple-on-device-ai` for choosing between them.
 
 See [references/coreml-swift-integration.md](references/coreml-swift-integration.md) for complete code patterns including
 actor-based caching, batch inference, image preprocessing, and testing.
@@ -416,4 +422,5 @@ lifecycle-aware loading and cache eviction.
   [MLModel](https://sosumi.ai/documentation/coreml/mlmodel) |
   [MLTensor](https://sosumi.ai/documentation/coreml/mltensor) |
   [MLComputePlan](https://sosumi.ai/documentation/coreml/mlcomputeplan-1w21n) |
-  [Background Assets](https://sosumi.ai/documentation/backgroundassets)
+  [Background Assets](https://sosumi.ai/documentation/backgroundassets) |
+  [Core AI (iOS 27+)](https://sosumi.ai/documentation/coreai)

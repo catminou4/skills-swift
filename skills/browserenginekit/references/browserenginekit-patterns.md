@@ -469,6 +469,51 @@ func requestFilterBypass(for url: URL) {
 }
 ```
 
+On iOS 27+, evaluate main-frame and subframe navigations separately and read
+the block-page HTML the filter returns:
+
+```swift
+let filter = BEWebContentFilter()
+
+// iOS 27+: frame-aware evaluation. `data` is the block page HTML to display.
+let (isBlocked, blockPageHTML) = await filter.evaluateURL(
+    url,
+    mainFrameURL: mainDocumentURL,
+    isMainFrame: isMainFrameNavigation
+)
+
+if isBlocked {
+    renderBlockPage(blockPageHTML)  // main frame: show page; subframe: insert in-frame
+}
+```
+
+`mainFrameURL` is the root of the transitive trust policy and matches `url`
+for main-frame navigations. To let a user request access to a blocked URL,
+ask the built-in filter to allowlist it (iOS 27+):
+
+```swift
+do {
+    let decision = try await filter.requestPermission(
+        for: blockedURL,
+        referrerURL: mainDocumentURL,  // decides remote vs on-device approval
+        presenting: browserView        // view to present permission UI from
+    )
+
+    switch decision {
+    case .allowed: reload(url: blockedURL)
+    case .denied: break              // Keep the block page
+    case .pending: showPendingState() // Remote parent approval outstanding
+    case .error: showFilterError()
+    @unknown default: break
+    }
+} catch {
+    // requestPermission also throws
+}
+```
+
+`requestPermission` returns a `BEWebContentFilter.PermissionDecision`
+(`.allowed`, `.denied`, `.error`, `.pending`).
+
 ## Accessibility
 
 ### Remote Accessibility Elements

@@ -41,6 +41,8 @@ StoreKit views initiate purchases automatically. For custom controls, use
 | **Non-consumable** | `.nonConsumable` | Purchased once permanently (premium unlock) |
 | **Auto-renewable** | `.autoRenewable` | Recurring billing with automatic renewal |
 | **Non-renewing** | `.nonRenewing` | Time-limited access without automatic renewal |
+| **Subscription bundle** | `.subscriptionBundle` | iOS 27+: bundles multiple subscriptions; `subscription?.bundledSubscriptions` lists members |
+| **Subscription suite** | `.subscriptionSuite` | iOS 27+: suite grouping product type |
 
 ## Loading Products
 
@@ -212,6 +214,11 @@ SubscriptionStoreView(groupID: "YOUR_GROUP_ID")
     }
 ```
 
+On iOS 26.4+, monthly subscriptions can offer a 12-month commitment billed in
+monthly installments. Select the plan with `.preferredSubscriptionPricingTerms`
+on the store view or the `.billingPlanType(.monthly)` purchase option; see
+[12-Month Commitment Plans](references/storekit-advanced.md#12-month-commitment-plans-ios-264).
+
 ### Custom Marketing Content
 
 Use the container background and header patterns in
@@ -314,6 +321,11 @@ func verifyAppPurchase() async {
 }
 ```
 
+On iOS 27+, read `appTransaction.storeType` (`AppTransaction.StoreType`:
+`.consumer`, `.education`, `.enterprise`) instead of the deprecated
+`storeTypeStringRepresentation`, and iterate `AppTransactions` (the
+`AppTransaction.all` async sequence) for all recorded app transactions.
+
 ## Purchase Options
 
 ```swift
@@ -325,6 +337,9 @@ try await product.purchase(options: [.quantity(5)])
 
 // Simulate Ask to Buy in sandbox
 try await product.purchase(options: [.simulatesAskToBuyInSandbox(true)])
+
+// Monthly installments on a 12-month commitment (iOS 26.4+)
+try await product.purchase(options: [.billingPlanType(.monthly)])
 ```
 
 ## SwiftUI Purchase Callbacks

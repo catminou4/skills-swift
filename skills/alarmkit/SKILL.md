@@ -151,6 +151,27 @@ ordinary Snooze/Repeat with `secondaryButtonBehavior: .countdown` and
 `Alarm.CountdownDuration.postAlert`; provide it only for `.custom` secondary
 behavior or app cleanup/custom behavior.
 
+On iOS 27+, every `AlarmConfiguration` factory (`init(countdownDuration:...)`,
+`.alarm(...)`, `.timer(...)`) takes an optional `appEntityIdentifier` parameter.
+Pass an App Intents `EntityIdentifier` so Siri and Apple Intelligence can act on
+the firing alarm or timer (for example, "Snooze it"):
+
+```swift
+import AppIntents
+
+let configuration = AlarmManager.AlarmConfiguration(
+    countdownDuration: snooze,
+    schedule: .relative(.init(time: .init(hour: 7, minute: 0), repeats: .never)),
+    attributes: attributes,
+    appEntityIdentifier: EntityIdentifier(for: AlarmEntity.self, identifier: alarm.id),
+    sound: .default
+)
+```
+
+The entity must have a stable, persistent identifier — `TransientAppEntity` is
+not supported. Model the annotated entity and its `EntityQuery` with
+`app-intents`.
+
 ### Alarm State Transitions
 
 ```text
@@ -291,6 +312,7 @@ for the complete shared-attributes widget implementation.
 | Intents added for standard Stop/Snooze | Omit them unless cleanup/custom behavior requires one |
 | Large `AlarmMetadata` payload | Keep lightweight metadata or reference app data by ID |
 | Deprecated `stopButton` initializer | Use `init(title:secondaryButton:secondaryButtonBehavior:)` |
+| `appEntityIdentifier` set to a `TransientAppEntity` | iOS 27+ annotations require an entity with a persistent ID |
 
 ## Review Checklist
 

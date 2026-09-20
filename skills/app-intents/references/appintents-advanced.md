@@ -19,6 +19,7 @@ URL-representable types, and Spotlight indexing.
 - [URLRepresentableIntent / Entity / Enum (iOS 18+)](#urlrepresentableintent-entity-enum-ios-18)
 - [IndexedEntity for Spotlight (iOS 18+)](#indexedentity-for-spotlight-ios-18)
 - [`@ComputedProperty(indexingKey:) for Spotlight (iOS 26+)`](#computedpropertyindexingkey-for-spotlight-ios-26)
+- [IndexedEntityQuery (iOS 27+)](#indexedentityquery-ios-27)
 - [Onscreen Content for Siri (iOS 26+)](#onscreen-content-for-siri-ios-26)
 - [Parameter Summary Builder](#parameter-summary-builder)
 - [Core Spotlight Direct Usage](#core-spotlight-direct-usage)
@@ -896,6 +897,34 @@ struct RecipeEntity: IndexedEntity {
 | `\.keywords` | `[String]` | Additional search terms |
 | `\.contentURL` | `URL?` | Content location |
 
+## IndexedEntityQuery (iOS 27+)
+
+Adopt `IndexedEntityQuery` on an entity query so the system can retrieve
+indexed entities by identifier straight from the Spotlight index and drive
+reindexing itself:
+
+```swift
+struct RecipeQuery: IndexedEntityQuery {
+    func entities(for identifiers: [RecipeEntity.ID]) async throws -> [RecipeEntity] {
+        RecipeStore.shared.fetch(ids: identifiers)
+    }
+
+    func reindexEntities(
+        for identifiers: [RecipeEntity.ID],
+        indexDescription: CSSearchableIndexDescription
+    ) async throws {
+        let entities = RecipeStore.shared.fetch(ids: identifiers)
+        try await CSSearchableIndex(name: "Recipes")
+            .indexAppEntities(entities)
+    }
+
+    func reindexAllEntities(indexDescription: CSSearchableIndexDescription) async throws {
+        try await CSSearchableIndex(name: "Recipes")
+            .indexAppEntities(RecipeStore.shared.all())
+    }
+}
+```
+
 ## Onscreen Content for Siri (iOS 26+)
 
 Make onscreen content available to Siri and Apple Intelligence without an
@@ -912,9 +941,24 @@ struct ArticleEntity: AppEntity, Transferable {
 
 // In your view controller or SwiftUI view:
 let activity = NSUserActivity(activityType: "com.myapp.article")
-activity.appEntityIdentifier = AppEntityIdentifier(article)
+activity.appEntityIdentifier = EntityIdentifier(
+    for: ArticleEntity.self,
+    identifier: article.id
+)
 // Set as current activity
 ```
+
+In SwiftUI, use the `.appEntityIdentifier(_:)` view modifier (iOS 18.4+):
+
+```swift
+ArticleDetailView(article: article)
+    .appEntityIdentifier(EntityIdentifier(for: ArticleEntity.self, identifier: article.id))
+```
+
+iOS 27 extends `EntityIdentifier` annotation beyond `NSUserActivity`:
+`UNMutableNotificationContent.appEntityIdentifiers` annotates notification
+payloads, and AlarmKit's `AlarmConfiguration` factories take an
+`appEntityIdentifier` so Siri can act on a firing alarm or timer.
 
 ## Parameter Summary Builder
 

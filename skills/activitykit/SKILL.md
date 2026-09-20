@@ -357,6 +357,29 @@ the system-managed push update budget. When cadence matters, check
 
 ## Recent Additions
 
+### Dynamic Island in Landscape (iOS 27+)
+
+Compact and minimal Dynamic Island views are now visible in landscape as well
+as portrait. In portrait, compact views are flexible in width; in landscape
+they cannot grow in width. Check the `isDynamicIslandLimitedInWidth`
+environment value inside `compactLeading`, `compactTrailing`, and `minimal`
+views and swap in narrower content when limited:
+
+```swift
+struct CompactTrailingView: View {
+    @Environment(\.isDynamicIslandLimitedInWidth) var isLimitedInWidth
+    let state: DrinkOrderAttributes.ContentState
+
+    var body: some View {
+        if isLimitedInWidth {
+            Text(state.phase.label)  // narrower fallback
+        } else {
+            Text(timerInterval: state.readyRange, countsDown: true)
+        }
+    }
+}
+```
+
 ### Scheduled Live Activities (iOS 26+)
 
 Schedule a Live Activity to start at a future time. The system starts the

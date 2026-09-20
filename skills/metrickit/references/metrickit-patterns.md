@@ -56,6 +56,8 @@ func enqueue(_ report: DiagnosticReport) async throws {
 
 `outbox` and `stableKey(for:)` are application-owned abstractions. Build the key from stable report metadata and the encoded report rather than memory identity.
 
+To group interval and state entries by each state-reporting domain in the encoded JSON, set `MetricReport.encodingFormatKey` in the encoder's `userInfo` to `MetricReport.EncodingFormat.byStateReportingDomain` before encoding.
+
 The upload worker should:
 
 1. Read a bounded batch.
@@ -82,8 +84,8 @@ func analyze(_ report: MetricReport) {
         switch result {
         case .hangTime(let value):
             recordHangTime(value, interval: report.timeRange)
-        case .scrollHitchTime(let value):
-            recordScrollHitchTime(value, interval: report.timeRange)
+        case .hitchTime(let value):
+            recordHitchTime(value, interval: report.timeRange)
         case .cpuTime(let value):
             recordCPUTime(value, interval: report.timeRange)
         case .peakMemory(let value):
@@ -112,6 +114,7 @@ Process the report only after durable storage:
 func analyze(_ report: DiagnosticReport) {
     switch report.result {
     case .crash(let crash):
+        recordTerminationCategory(crash.terminationCategory)
         symbolicate(crash.callStackTree)
     case .hang(let hang):
         recordHang(hang.hangDuration)
@@ -144,7 +147,7 @@ Load this catalog when mapping exact `MetricResult` cases into a parser or dashb
 
 | Area | `MetricResult` cases |
 |---|---|
-| Responsiveness | `hangTime`, `hitchTime`, `scrollHitchTime` |
+| Responsiveness | `hangTime`, `hitchTime` |
 | Terminations | `foregroundTermination`, `backgroundTermination` |
 | Runtime | `totalForegroundTime`, `totalBackgroundTime`, `totalBackgroundAudioTime`, `totalBackgroundLocationTime`, `locationActivityTime` |
 | CPU and memory | `cpuTime`, `cpuInstructionsCount`, `peakMemory`, `suspendedMemory` |
@@ -153,6 +156,12 @@ Load this catalog when mapping exact `MetricResult` cases into a parser or dashb
 | Storage | `logicalDiskWrites`, `totalFileCount`, `totalFileSize`, `totalDiskSpaceCapacity` |
 | Display and GPU | `pixelLuminance`, `gpuTime`, `metalFrameRate` |
 | Custom intervals | `signpostInterval` |
+
+iOS 27 API differences to keep in mind when porting legacy dashboards:
+
+- `scrollHitchTime` and `ScrollHitchTimeMetric` are removed; scroll hitch is part of `hitchTime`/`HitchTimeMetric`. An un-recompiled binary that references the removed symbols crashes on launch.
+- `HitchTimeMetric.ratio` and `SignpostIntervalMetric.hitchTimeRatio` return `HitchTimeRatio`, a `Dimension` subclass expressing milliseconds hitching per second of tracked duration.
+- `metalFrameRate` is new for per-`CAMetalLayer` Metal frame pacing, and `LocationActivityTimeMetric` gained `reducedAccuracy`.
 
 ## Call Stack Trees
 

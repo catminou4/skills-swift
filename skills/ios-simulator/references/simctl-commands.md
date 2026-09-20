@@ -26,6 +26,7 @@ Common `xcrun simctl` subcommands with syntax, flags, and examples. For workflow
 | `erase` | `simctl erase <UDID\|all>` | Factory reset — wipes apps and data, keeps the device. |
 | `boot` | `simctl boot <UDID>` | Starts the device runtime. |
 | `bootstatus` | `simctl bootstatus <UDID> [-b]` | Waits until the device finishes booting. Use `-b` in scripts to boot if needed and block until ready. |
+| `reboot` | `simctl reboot <UDID>` | Reboots a running device in one step (Xcode 27+). |
 | `shutdown` | `simctl shutdown <UDID\|all>` | Stops the device runtime. |
 | `upgrade` | `simctl upgrade <UDID> <runtime-id>` | Upgrades device to a newer runtime. |
 | `pair` | `simctl pair <watch-UDID> <phone-UDID>` | Pairs a watchOS simulator with an iOS simulator. |
@@ -44,7 +45,7 @@ xcrun simctl list devicetypes
 xcrun simctl list runtimes
 
 # Example output line:
-# iOS 18.4 - com.apple.CoreSimulator.SimRuntime.iOS-18-4
+# iOS 27.0 - com.apple.CoreSimulator.SimRuntime.iOS-27-0
 ```
 
 Use the identifier strings (e.g., `com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro`) in `create` and `upgrade` commands.
@@ -207,7 +208,7 @@ xcrun simctl list -j devices booted | \
 ### Find a Device by Name and Runtime
 
 ```bash
-RUNTIME="com.apple.CoreSimulator.SimRuntime.iOS-18-4"
+RUNTIME="com.apple.CoreSimulator.SimRuntime.iOS-27-0"
 xcrun simctl list -j devices available | \
     jq -r --arg rt "$RUNTIME" \
     '.devices[$rt][] | select(.name == "iPhone 16 Pro") | .udid'
@@ -318,6 +319,8 @@ xcodebuild -downloadPlatform iOS
 ```
 
 Runtime downloads can be large (5+ GB). In CI, pre-install runtimes in the base image.
+
+Xcode 27 known issue: some simulator runtimes are not completely deleted when removed and can re-appear after a reboot. If `simctl list runtimes` shows a runtime you deleted, remove it again after restarting CoreSimulatorService.
 
 ### CoreSimulator Cache Corruption
 

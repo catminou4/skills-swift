@@ -50,7 +50,7 @@ xcrun simctl list devicetypes
 xcrun simctl list runtimes
 
 # Create a device — returns the new UDID
-xcrun simctl create "My Test Phone" "iPhone 16 Pro" "com.apple.CoreSimulator.SimRuntime.iOS-18-4"
+xcrun simctl create "My Test Phone" "iPhone 16 Pro" "com.apple.CoreSimulator.SimRuntime.iOS-27-0"
 ```
 
 Device types and runtime identifiers in examples throughout this skill are illustrative. Run `simctl list devicetypes` and `simctl list runtimes` to find the identifiers available on your system.
@@ -65,6 +65,9 @@ xcrun simctl boot <UDID>
 
 # Boot if needed and wait until the device is ready
 xcrun simctl bootstatus <UDID> -b
+
+# Reboot a running device (Xcode 27+)
+xcrun simctl reboot <UDID>
 
 # Shutdown a running device
 xcrun simctl shutdown <UDID>
@@ -92,6 +95,11 @@ If multiple simulators are booted, `booted` picks one of them non-deterministica
 
 In scripts and CI, `xcrun simctl bootstatus <UDID> -b` is the canonical
 boot-and-readiness gate before install, launch, push, or location commands.
+
+Xcode 27 simulator runtimes ship with a pre-built dyld cache, so first boot of
+a fresh runtime is much faster than on earlier releases. `simctl reboot`
+(Xcode 27+) is a single command equivalent to shutdown followed by boot; keep
+using `bootstatus -b` as the readiness gate afterward.
 
 ## App Install and Launch
 
@@ -342,6 +350,7 @@ does not establish real-device fidelity.
 | Memory warnings, location changes, manual iCloud sync trigger | Supported through Simulator menus or `simctl`; manual sync can test app callback handling |
 | Automatic iCloud propagation and conflicts | Hardware required for real accounts/devices, notification-triggered sync, background delivery, conflicts, and account/device state differences |
 | Cellular network conditions | No — use Network Link Conditioner on Mac |
+| Address Sanitizer on a 27.0 runtime | Requires Xcode 26.5 or later — ASan may fail to launch on iOS 27.0/tvOS 27.0/watchOS 27.0/visionOS 27.0 when building with Xcode 26.4 or older |
 
 ## Common Mistakes
 
@@ -355,7 +364,7 @@ xcrun simctl boot "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
 
 # CORRECT — look up by name and runtime
 UDID=$(xcrun simctl list -j devices available | \
-    jq -r '.devices["com.apple.CoreSimulator.SimRuntime.iOS-18-4"][] | select(.name == "iPhone 16 Pro") | .udid')
+    jq -r '.devices["com.apple.CoreSimulator.SimRuntime.iOS-27-0"][] | select(.name == "iPhone 16 Pro") | .udid')
 xcrun simctl boot "$UDID"
 
 # CORRECT — use "booted" when one simulator is running
@@ -382,7 +391,7 @@ Each booted simulator consumes memory and CPU. CI pipelines that create simulato
 
 ```bash
 # WRONG — CI script creates and boots but never cleans up
-xcrun simctl create "CI Phone" "iPhone 16 Pro" "com.apple.CoreSimulator.SimRuntime.iOS-18-4"
+xcrun simctl create "CI Phone" "iPhone 16 Pro" "com.apple.CoreSimulator.SimRuntime.iOS-27-0"
 xcrun simctl boot "$UDID"
 # ... tests run, pipeline exits ...
 
@@ -435,4 +444,5 @@ xcrun simctl erase all
 - [Testing in Simulator versus testing on hardware devices](https://sosumi.ai/documentation/xcode/testing-in-simulator-versus-testing-on-hardware-devices)
 - [Testing complex hardware device scenarios in Simulator](https://sosumi.ai/documentation/xcode/testing-complex-hardware-device-scenarios-in-simulator)
 - [Simulating an external display or CarPlay](https://sosumi.ai/documentation/xcode/simulating-an-external-display-or-carplay)
+- [Xcode 27 release notes](https://sosumi.ai/documentation/xcode-release-notes/xcode-27-release-notes)
 - simctl command reference: [references/simctl-commands.md](references/simctl-commands.md)

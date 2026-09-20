@@ -1,6 +1,6 @@
 ---
 name: musickit
-description: "Integrate Apple Music playback, catalog search, and Now Playing metadata using MusicKit and MediaPlayer. Use when adding music search, Apple Music subscription flows, queue management, playback controls, remote command handling, or Now Playing info to iOS apps."
+description: "Integrate Apple Music playback, catalog search, and Now Playing metadata using MusicKit and MediaPlayer. Use when adding music search, Apple Music subscription flows, queue management, playback controls, remote command handling, Now Playing info, or the iOS 27+ NowPlaying framework for custom audio sources to iOS apps."
 ---
 
 # MusicKit
@@ -259,6 +259,20 @@ func setArtwork(_ image: UIImage) {
 }
 ```
 
+### NowPlaying Framework (iOS 27+)
+
+iOS 27 adds the NowPlaying framework as a modern alternative for publishing
+local playback to the Lock Screen, Control Center, Dynamic Island, and CarPlay.
+Conform an `@Observable` model to `MediaSessionRepresentable` — providing
+`id`, `content` (such as `MusicContent`), `playbackSnapshot`
+(`MediaPlaybackSnapshot`), and `commands` (`[MediaCommand]` factory methods
+like `.play {}` / `.pause {}`) — then publish it with `MediaSession(model)`.
+`RemoteMediaSession` and `RemoteMediaSessionExtension` cover playback on
+external devices. Do not mix NowPlaying with `MPNowPlayingInfoCenter` and
+`MPRemoteCommandCenter` for local playback — Apple documents that combination
+as undefined behavior. `ApplicationMusicPlayer` still publishes Now Playing
+automatically for Apple Music content.
+
 ## Remote Command Center
 
 Register handlers for `MPRemoteCommandCenter` to respond to Lock Screen controls,
@@ -317,6 +331,7 @@ func enableScrubbing() {
 | Queueing catalog content without a subscription gate | Check `canPlayCatalogContent`; offer subscription only when `canBecomeSubscriber`. |
 | Using `SystemMusicPlayer` for app-owned playback | Use `ApplicationMusicPlayer`; the system player changes the Music app's global queue. |
 | Publishing Now Playing metadata once | Refresh it on track, duration, rate, and elapsed-time changes. |
+| Mixing iOS 27+ NowPlaying sessions with `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` for local playback | Pick one API per playback path; combining them is documented undefined behavior. |
 | Registering unsupported remote commands | Disable them; supported handlers must perform the action and return `.success`. |
 
 ## Review Checklist
@@ -330,6 +345,7 @@ func enableScrubbing() {
 - [ ] `ApplicationMusicPlayer` used (not `SystemMusicPlayer`) for app-scoped playback
 - [ ] Background audio mode enabled if music plays in background
 - [ ] Now Playing info updated on every track change (for custom audio)
+- [ ] iOS 27+ NowPlaying framework not combined with `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` on the same playback path
 - [ ] Remote command handlers return `.success` for supported commands
 - [ ] Unsupported remote commands disabled with `isEnabled = false`
 - [ ] Artwork provided in Now Playing info for Lock Screen display
@@ -352,4 +368,7 @@ func enableScrubbing() {
 - [musicSubscriptionOffer(isPresented:options:onLoadCompletion:)](https://sosumi.ai/documentation/swiftui/view/musicsubscriptionoffer(ispresented:options:onloadcompletion:))
 - [MPRemoteCommandCenter](https://sosumi.ai/documentation/mediaplayer/mpremotecommandcenter)
 - [MPNowPlayingInfoCenter](https://sosumi.ai/documentation/mediaplayer/mpnowplayinginfocenter)
+- [NowPlaying framework (iOS 27+)](https://sosumi.ai/documentation/nowplaying)
+- [MediaSessionRepresentable](https://sosumi.ai/documentation/nowplaying/mediasessionrepresentable)
+- [Meet the NowPlaying framework (WWDC26)](https://sosumi.ai/videos/play/wwdc2026/312/)
 - [NSAppleMusicUsageDescription](https://sosumi.ai/documentation/bundleresources/information-property-list/nsapplemusicusagedescription)

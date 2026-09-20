@@ -9,6 +9,7 @@ Overflow reference for the `musickit` skill. Contains advanced patterns that exc
 - [Library Management](#library-management)
 - [Playlist Access](#playlist-access)
 - [Now Playing Session](#now-playing-session)
+- [NowPlaying Framework (iOS 27+)](#nowplaying-framework-ios-27)
 - [Background Audio Configuration](#background-audio-configuration)
 
 ## MusicKit SwiftUI Integration
@@ -300,6 +301,63 @@ func createNowPlayingSession(for player: AVPlayer) -> MPNowPlayingSession {
     return session
 }
 ```
+
+## NowPlaying Framework (iOS 27+)
+
+The NowPlaying framework (iOS 27+, all platforms) publishes playback to the
+Lock Screen, Control Center, Dynamic Island, and CarPlay. Conform an
+`@Observable` model to `MediaSessionRepresentable` and activate it with
+`MediaSession`.
+
+```swift
+import NowPlaying
+
+@Observable
+@MainActor
+final class PlayerModel: MediaSessionRepresentable {
+    let id = "com.example.player"
+    var currentTrack: Track?
+    var isPlaying = false
+    var currentTime: TimeInterval = 0
+
+    var content: (any MediaContentRepresentable)? {
+        guard let track = currentTrack else { return nil }
+        return MusicContent(
+            id: track.id,
+            songTitle: track.title,
+            artistName: track.artist,
+            albumName: track.album,
+            type: .audio,
+            duration: .finite(track.duration),
+            artwork: nil
+        )
+    }
+
+    var playbackSnapshot: MediaPlaybackSnapshot? {
+        MediaPlaybackSnapshot(
+            state: isPlaying ? .playing(rate: 1.0) : .paused,
+            elapsedTime: currentTime,
+            timestamp: .now
+        )
+    }
+
+    var commands: [MediaCommand] {
+        [
+            .play { await self.play() },
+            .pause { await self.pause() },
+            .next { await self.nextTrack() }.enabled(hasNextTrack)
+        ]
+    }
+}
+
+let session = MediaSession(model)
+```
+
+`RemoteMediaSession`, `RemoteMediaSessionRepresentable`, and
+`RemoteMediaSessionExtension` cover media playing on external devices (cars,
+speakers, TVs) via a media extension. Do not mix the NowPlaying framework with
+`MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` for local playback — the
+combination is documented as undefined behavior.
 
 ## Background Audio Configuration
 

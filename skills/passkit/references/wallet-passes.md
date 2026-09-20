@@ -15,6 +15,7 @@ type, such as `recurringPaymentRequest`, `automaticReloadPaymentRequest`,
 - [Deferred Payments](#deferred-payments)
 - [Building Pass Bundles](#building-pass-bundles)
 - [Updating Passes with Push Notifications](#updating-passes-with-push-notifications)
+- [iOS 27 Pass Format Updates](#ios-27-pass-format-updates)
 - [SwiftUI Payment Flow](#swiftui-payment-flow)
 
 ## Recurring Payment Requests
@@ -240,6 +241,89 @@ func updatePass(newPassData: Data) {
     }
 }
 ```
+
+## iOS 27 Pass Format Updates
+
+iOS 27 / watchOS 27 add a Poster Generic pass style, four barcode formats, and
+featured actions. All are pass.json changes made server-side; older OS versions
+ignore them, so ship legacy fallbacks in the same pass.
+
+### Poster Generic Style
+
+`posterGeneric` is a new top-level style key for membership, loyalty, coupon,
+reward, and gift-card passes. The layout renders a background image with a
+primary logo, a header field, up to four `primaryFields`, two `footerFields`,
+`backFields`, an `additionalInfoFields` entry, and a square barcode. Wallet
+prioritizes `posterGeneric` when present; include a second style dictionary
+(`generic`, `storeCard`, `coupon`, `eventTicket`, or `boardingPass`) so iOS 26
+and earlier still render the pass.
+
+```json
+{
+  "formatVersion": 1,
+  "passTypeIdentifier": "pass.com.example.membership-pass",
+  "serialNumber": "123A4b5Z7p",
+  "teamIdentifier": "ABCD1234",
+  "organizationName": "Museum",
+  "description": "Museum membership",
+  "posterGeneric": {
+    "headerFields": [
+      {"key": "memberNumber", "label": "Guest No.", "value": "102035"}
+    ],
+    "primaryFields": [
+      {"key": "memberName", "label": "Name", "value": "Ryan Notch"},
+      {"key": "memberType", "label": "Type", "value": "Family Pass"}
+    ],
+    "backFields": [
+      {"key": "terms", "label": "Terms", "value": "..."}
+    ]
+  },
+  "generic": {
+    "primaryFields": [
+      {"key": "memberName", "label": "Name", "value": "Ryan Notch"}
+    ]
+  }
+}
+```
+
+### New Barcode Formats
+
+`PKBarcodeFormatCode39`, `PKBarcodeFormatCodabar`, `PKBarcodeFormatEAN13`, and
+`PKBarcodeFormatI2of5` join `PKBarcodeFormatQR`, `PKBarcodeFormatPDF417`,
+`PKBarcodeFormatAztec`, and `PKBarcodeFormatCode128`. The `barcodes` array is
+ordered by preference: iOS 27 renders the first displayable entry and pre-iOS
+27 devices fall back to the first format they support — for example, EAN-13
+followed by QR renders EAN-13 on iOS 27+ and QR on older devices.
+
+```json
+"barcodes": [
+  {"format": "PKBarcodeFormatEAN13", "message": "5901234123457",
+   "messageEncoding": "iso-8859-1"},
+  {"format": "PKBarcodeFormatQR", "message": "M-123456",
+   "messageEncoding": "iso-8859-1"}
+]
+```
+
+A pass whose `barcodes` contain only new formats shows no barcode on pre-iOS 27
+devices. Keep a prominent credential-ID field and a staff manual-entry fallback
+for that case.
+
+### Featured Actions
+
+Top-level `featuredActions` adds up to two action cards shown when the pass is
+viewed in Wallet — quick links such as directions to a business location or a
+booking page. Each action pairs an SF Symbol icon (prefer circular, filled
+symbols) with a short call-to-action label and an action value such as a URL;
+list them in priority order. Works for all pass styles, including
+`posterGeneric`.
+
+### Authoring Tools
+
+- **Pass Designer**: a Mac app for visually laying out and previewing passes,
+  saved as `.pkpasstemplate` files.
+- **Pass Builder**: a Swift-on-Server package for generating, personalizing,
+  and updating passes at scale, with a `buildpass` CLI that runs on macOS and
+  Linux.
 
 ## SwiftUI Payment Flow
 

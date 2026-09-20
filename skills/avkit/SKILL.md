@@ -1,6 +1,6 @@
 ---
 name: avkit
-description: "Create media playback experiences using AVKit. Use when adding video players with AVPlayerViewController, enabling Picture-in-Picture, routing media with AirPlay, using SwiftUI VideoPlayer views, configuring transport controls, displaying subtitles and closed captions, or integrating AVFoundation playback with system UI."
+description: "Create media playback experiences using AVKit. Use when adding video players with AVPlayerViewController, enabling Picture-in-Picture, routing media with AirPlay, using SwiftUI VideoPlayer views, configuring transport controls, displaying subtitles and closed captions, integrating AVFoundation playback with system UI, publishing system Now Playing state with the iOS 27 NowPlaying framework, or supporting generated subtitles."
 ---
 
 # AVKit
@@ -354,6 +354,20 @@ default. Disable this if you manage Now Playing info manually:
 playerVC.updatesNowPlayingInfoCenter = false
 ```
 
+### NowPlaying Framework (iOS 27+)
+
+iOS 27 adds the NowPlaying framework, a Swift API that publishes playback
+state to the Lock Screen, Control Center, Dynamic Island, StandBy, and
+CarPlay. Conform an `@Observable` model to `MediaSessionRepresentable`
+(`id`, `content`, `playbackSnapshot`, `commands`), then retain a
+`MediaSession(model)` — the framework observes the model and keeps
+now-playing surfaces up to date. Content types include `MusicContent`,
+`PodcastContent`, `MovieContent`, `TVShowContent`, `BookContent`,
+`RadioContent`, `HomeMediaContent`, and `GenericContent`; the same model
+drives `RemoteMediaSession`/`RemoteMediaSessionExtension` (iOS/iPadOS/
+Catalyst only) for media playing on external devices. See the full pattern
+in [references/avkit-patterns.md](references/avkit-patterns.md).
+
 ## Subtitles and Closed Captions
 
 AVKit handles subtitle and closed caption display automatically when the media
@@ -384,6 +398,24 @@ Subtitles and closed captions are embedded in HLS manifests. AVKit reads them
 from `AVMediaSelectionGroup` on the `AVAsset`. For local files, use media that
 already includes legible subtitle or closed-caption tracks, or author those
 tracks into the playable asset before presenting it with AVKit.
+
+### Generated Subtitles (iOS 27+)
+
+iOS 27 can generate subtitles on-device during playback — transcribing
+English audio, or translating English authored subtitles into other
+languages — for HLS, VOD, and file-based content. No app opt-in is needed:
+`AVPlayerViewController` and `AVPlayerView` expose generated options in the
+subtitle menu automatically, while authored subtitles remain preferred when
+available. Custom player UIs get the same selection menu from
+`AVLegibleMediaOptionsMenuController` (iOS 26.4+).
+
+Subtitle style preview (iOS 26.4+) lets users pick a system caption style
+during playback — built into `AVPlayerViewController` and
+`AVLegibleMediaOptionsMenuController`. Custom `AVPlayerLayer` players show
+previews with `setCaptionPreviewProfileID(_:position:text:)` and
+`stopShowingCaptionPreview()`, using profile IDs from
+`MACaptionAppearanceCopyProfileIDs()` and applying the selection with
+`MACaptionAppearanceSetActiveProfileID`.
 
 ## Common Mistakes
 
@@ -479,6 +511,8 @@ struct PlayerView: View {
 - [ ] tvOS-only skipping APIs are not used for iOS transport controls
 - [ ] External playback is not disabled accidentally when AirPlay is required
 - [ ] Subtitle selection tested with actual media tracks
+- [ ] iOS 27 generated subtitles need no opt-in; custom players expose a subtitle menu via `AVLegibleMediaOptionsMenuController`
+- [ ] Now Playing path chosen deliberately: `updatesNowPlayingInfoCenter`, manual `MPNowPlayingInfoCenter`, or NowPlaying `MediaSession` (iOS 27+)
 - [ ] Video gravity set appropriately (`.resizeAspect` vs `.resizeAspectFill`)
 - [ ] `isReadyForDisplay` observed before showing the player view
 - [ ] Error handling for network-streamed content (HLS failures, timeouts)
@@ -493,5 +527,8 @@ struct PlayerView: View {
 - [AVRoutePickerView](https://sosumi.ai/documentation/avkit/avroutepickerview)
 - [AVPlaybackSpeed](https://sosumi.ai/documentation/avkit/avplaybackspeed)
 - [Configuring your app for media playback](https://sosumi.ai/documentation/avfoundation/configuring-your-app-for-media-playback)
+- [NowPlaying framework](https://sosumi.ai/documentation/nowplaying) — iOS 27+ system Now Playing sessions
+- [Meet the Now Playing framework — WWDC26](https://sosumi.ai/videos/play/wwdc2026/312/)
+- [Discover generated subtitles and subtitle styles — WWDC26](https://sosumi.ai/videos/play/wwdc2026/256/)
 - [Adopting Picture in Picture in a Standard Player](https://sosumi.ai/documentation/avkit/adopting-picture-in-picture-in-a-standard-player)
 - [Playing video content in a standard user interface](https://sosumi.ai/documentation/avkit/playing-video-content-in-a-standard-user-interface)

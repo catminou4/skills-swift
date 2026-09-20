@@ -1,6 +1,6 @@
 ---
 name: paperkit
-description: "Add drawings, shapes, and a consistent markup experience using PaperKit. Use when integrating PaperMarkupViewController for markup editing, adding shape recognition, working with PaperMarkup data models, embedding markup tools in document editors, or building annotation features that need the system-standard markup toolbar. New in iOS 26."
+description: "Add drawings, shapes, and a consistent markup experience using PaperKit. Use when integrating PaperMarkupViewController for markup editing, adding shape recognition, working with PaperMarkup data models, embedding markup tools in document editors, or building annotation features that need the system-standard markup toolbar. New in iOS 26; iOS 27 adds element-level data model access and canvas adornments."
 ---
 
 # PaperKit
@@ -112,6 +112,11 @@ class MarkupViewController: UIViewController, PaperMarkupViewController.Delegate
 | `contentView` | `UIView?` / `NSView?` | Background view rendered beneath markup |
 | `zoomRange` | `ClosedRange<CGFloat>` | Min/max zoom scale |
 | `supportedFeatureSet` | `FeatureSet` | Enabled PaperKit features |
+| `selection` | `Set<MarkupOrderedSet.ElementID>` | Currently selected elements (iOS 27+) |
+| `adornments` | `[MarkupAdornment]` | Non-persisted overlays anchored to canvas coordinates (iOS 27+) |
+| `scrollConfiguration` | `ScrollConfiguration` | Scroll behavior including `visibleScrollIndicators` (iOS 27+) |
+
+iOS 27 deprecates `showsVerticalScrollIndicator` and `showsHorizontalScrollIndicator`; use `scrollConfiguration` instead.
 
 ### Touch Modes
 
@@ -145,6 +150,9 @@ paperVC.contentView = imageView
 | `paperMarkupViewControllerDidBeginDrawing(_:)` | User starts drawing |
 | `paperMarkupViewControllerDidChangeSelection(_:)` | Selection changes |
 | `paperMarkupViewControllerDidChangeContentVisibleFrame(_:)` | Visible frame changes |
+| `paperMarkupViewController(_:didTapAdornmentWithID:)` | Adornment tapped (iOS 27+) |
+| `paperMarkupViewController(_:willUpdateAdornmentWithID:toProposedAnchor:)` | Adornment anchor proposed change (iOS 27+) |
+| `paperMarkupViewController(_:didUpdateAdornmentWithID:toAnchor:)` | Adornment anchor changed (iOS 27+) |
 
 ## PaperMarkup Data Model
 
@@ -216,6 +224,27 @@ markup.removeContentUnsupported(by: featureSet) // Strip unsupported elements
 | `indexableContent` | Extractable text for search indexing |
 
 Use `suggestedFrameForInserting(contentInFrame:)` on the view controller to get a frame that avoids overlapping existing content.
+
+### Element Access (iOS 27+)
+
+iOS 27 opens the data model: `subelements` exposes every element on the canvas as a mutable `MarkupOrderedSet`. Each element conforms to the `Markup` protocol (`frame`, `rotation`, `allowedInteractions`) with concrete types `ShapeMarkup`, `ImageMarkup`, `LinkMarkup`, `LoupeMarkup`, and PencilKit `PKStroke`. `MarkupOrderedSet.ElementID` cases (`.shape`, `.image`, `.link`, `.loupe`, `.stroke(UUID)`) switch on element kind; `MarkupID<T>` gives typed identity.
+
+```swift
+// Lock template elements in place while leaving user content editable
+for elementID in markup.subelements.ids {
+    if case .shape(let id) = elementID, var shape = markup.subelements[id] {
+        shape.allowedInteractions = .readOnly
+        markup.subelements.updateOrAppend(shape)
+    }
+}
+paperVC.markup = markup
+```
+
+`MarkupInteractions` options: `.move`, `.resize`, `.rotate`, `.delete`, `.style`, `.select`, `.all`, `.readOnly`.
+
+### Adornments (iOS 27+)
+
+`MarkupAdornment` is a visual overlay anchored to canvas coordinates — buttons, annotations, or collaboration UI that tracks zoom and scroll but is never persisted, printed, or exported. Assign to `paperVC.adornments`, give each a `MarkupAdornment.Anchor` and an `imageConfiguration`, and handle taps in `paperMarkupViewController(_:didTapAdornmentWithID:)`.
 
 ## Insertion Controllers
 
@@ -429,11 +458,13 @@ struct DocumentMarkupScreen: View {
 - [ ] Correct insertion controller per platform (`MarkupToolbarViewController` for macOS/Catalyst toolbar UI; `MarkupEditViewController` for UIKit/Catalyst popovers)
 - [ ] `MarkupError` cases handled on deserialization
 - [ ] HDR: `colorMaximumLinearExposure` set on `FeatureSet` and `PKToolPicker.colorMaximumLinearExposure`
+- [ ] iOS 27+: fixed template elements locked via `allowedInteractions = .readOnly`; non-persisted overlays use `MarkupAdornment`
 
 ## References
 
 - [PaperKit documentation](https://sosumi.ai/documentation/paperkit)
 - [Integrating PaperKit into your app](https://sosumi.ai/documentation/paperkit/getting-started-with-paperkit)
 - [Meet PaperKit — WWDC25](https://sosumi.ai/videos/play/wwdc2025/285/)
+- [Unwrap PaperKit — WWDC26](https://sosumi.ai/videos/play/wwdc2026/372/)
 - The `pencilkit` skill covers PencilKit drawing, tool pickers, and PKDrawing serialization
 - [references/paperkit-patterns.md](references/paperkit-patterns.md) — data persistence, rendering, multi-platform setup, custom feature sets

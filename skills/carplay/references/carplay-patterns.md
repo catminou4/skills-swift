@@ -11,6 +11,7 @@ exceed the main skill file's scope.
 - [Lane Guidance](#lane-guidance)
 - [Navigation Alerts](#navigation-alerts)
 - [Map Panning Delegate](#map-panning-delegate)
+- [Map Panels and Route Sharing (iOS 27+)](#map-panels-and-route-sharing-ios-27)
 - [Advanced List Patterns](#advanced-list-patterns)
 - [Audio App: Full Scene Delegate](#audio-app-full-scene-delegate)
 - [Communication App Patterns](#communication-app-patterns)
@@ -287,6 +288,60 @@ extension CarPlaySceneDelegate: CPMapTemplateDelegate {
 }
 ```
 
+## Map Panels and Route Sharing (iOS 27+)
+
+### Secondary Panels
+
+`CPMapPanel` (iOS 27+) is a secondary content panel layered on the map
+template. Manage panels with `pushPanel`, `popPanel`, `showPanel`, and
+`hidePanel`; a navigation session's options panel is reachable via
+`CPNavigationSession.optionsPanel`.
+
+```swift
+let panel = CPMapPanel(title: "Parking", sections: [section],
+                       buttonConfiguration: nil)
+mapTemplate.pushPanel(panel) { _, _ in }
+
+navigationSession.optionsPanel = optionsPanel
+```
+
+### Route Sharing
+
+Route sharing hands the app's route to the vehicle's own navigation. Opt
+in per map template, then handle vehicle-proposed waypoint inserts.
+
+```swift
+extension CarPlaySceneDelegate: CPMapTemplateDelegate {
+    // iOS 26.4+
+    func mapTemplateShouldProvideRouteSharing(
+        _ mapTemplate: CPMapTemplate
+    ) -> Bool { true }
+
+    func mapTemplate(
+        _ mapTemplate: CPMapTemplate,
+        didRequestToInsert waypoint: CPNavigationWaypoint,
+        into segment: CPRouteSegment,
+        completion: (CPTravelEstimates) -> Void
+    ) {
+        let estimates = estimate(to: waypoint, via: segment)
+        completion(estimates)
+    }
+
+    // iOS 27+ — vehicle reports whether sharing is on for this trip
+    func mapTemplate(
+        _ mapTemplate: CPMapTemplate,
+        didUpdateRouteSharingEnabled enabled: Bool
+    ) { /* update UI */ }
+}
+
+navigationSession.isRouteSharingSupported   // iOS 27+
+navigationSession.isRouteSharingEnabled     // iOS 27+
+```
+
+Multi-stop trips answer
+`mapTemplate(_:didRequestMultiStopCardConfigurationWithCompletion:)` with a
+`CPMultiStopCardConfiguration` (iOS 27+).
+
 ## Advanced List Patterns
 
 ### Header Grid Buttons
@@ -389,6 +444,9 @@ final class AudioCarPlaySceneDelegate: UIResponder,
             CPNowPlayingRepeatButton { _ in MusicLibrary.shared.toggleRepeat() }
         ])
         np.add(self)
+        // iOS 27+: Now Playing shows a mini player by default; set to
+        // false to fall back to the navigation bar icon.
+        np.allowsMiniPlayer = true
     }
 
     func nowPlayingTemplateUpNextButtonTapped(_ t: CPNowPlayingTemplate) {
